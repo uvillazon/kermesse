@@ -3,6 +3,9 @@
 .codex/
 .gemini/
 
+# Traspaso temporal entre sesiones; la memoria durable vive en .ai-memory/
+HANDOFF.md
+
 # Bases de datos y archivos de runtime
 *.db
 *.db-shm

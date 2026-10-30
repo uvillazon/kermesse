@@ -1,0 +1,39 @@
+#!/usr/bin/env php
+<?php
+
+use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Dotenv\Dotenv;
+
+require dirname(__DIR__).'/vendor/autoload.php';
+
+if (!class_exists(Dotenv::class)) {
+    fwrite(STDERR, "Dependencias no instaladas. Ejecuta: composer install\n");
+    exit(1);
+}
+
+$envFile = dirname(__DIR__).'/.env';
+if (is_file($envFile)) {
+    (new Dotenv())->bootEnv($envFile);
+}
+
+$defaults = [
+    'APP_ENV' => 'dev',
+    'APP_DEBUG' => '0',
+    'APP_SECRET' => 'local-console-only',
+    'RATE_LIMIT_ENABLED' => '0',
+    'RATE_LIMIT_DEFAULT_PER_MINUTE' => '60',
+    'IDEMPOTENCY_HEADER' => 'HTTP_IDEMPOTENCY_KEY',
+    'DATABASE_URL' => 'mysql://invalid:invalid@127.0.0.1:3306/kermesfera?charset=utf8mb4',
+    'DATABASE_SERVER_VERSION' => '10.4.18-MariaDB',
+];
+foreach ($defaults as $name => $value) {
+    if (!isset($_SERVER[$name]) && !isset($_ENV[$name])) {
+        $_SERVER[$name] = $_ENV[$name] = $value;
+    }
+}
+
+$kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);
+$application = new Application($kernel);
+$application->run(new ArgvInput());

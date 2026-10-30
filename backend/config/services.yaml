@@ -1,0 +1,76 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+
+  App\:
+    resource: '../src/'
+    exclude:
+      - '../src/DependencyInjection/'
+      - '../src/Entity/'
+      - '../src/Kernel.php'
+
+  App\Shared\Application\Idempotency\IdempotencyKeyResolver:
+    arguments:
+      $headerName: '%env(IDEMPOTENCY_HEADER)%'
+
+  App\Shared\Infrastructure\RateLimit\RateLimitPolicy:
+    arguments:
+      $enabled: '%env(bool:RATE_LIMIT_ENABLED)%'
+      $defaultPerMinute: '%env(int:RATE_LIMIT_DEFAULT_PER_MINUTE)%'
+
+  App\Identity\Application\Access\AccessDirectory:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineAccessDirectory
+
+  App\Identity\Application\Access\EventAssignmentWriter:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineEventAssignmentWriter
+
+  App\Identity\Application\Access\InvitationAcceptanceRepository:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineInvitationAcceptanceRepository
+
+  App\Identity\Application\Access\OrganizationAccessWriter:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineOrganizationAccessWriter
+
+  App\Identity\Application\Access\InvitationWriter:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineInvitationWriter
+
+  App\Identity\Application\Access\OrganizationOwnershipWriter:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineOrganizationOwnershipWriter
+
+  App\Identity\Application\Invitation\InvitationTokenGenerator:
+    alias: App\Identity\Infrastructure\Security\SecureInvitationTokenGenerator
+
+  App\Identity\Infrastructure\Security\SecureInvitationTokenGenerator:
+    arguments:
+      $secret: '%env(INVITATION_TOKEN_SECRET)%'
+      $version: '%env(INVITATION_TOKEN_KEY_VERSION)%'
+      $legacySecrets: '%env(json:INVITATION_TOKEN_LEGACY_SECRETS)%'
+
+  App\Shared\Infrastructure\Security\HmacBearerTokenCodec:
+    arguments:
+      $secret: '%env(AUTH_TOKEN_SECRET)%'
+      $issuer: '%env(AUTH_TOKEN_ISSUER)%'
+      $audience: '%env(AUTH_TOKEN_AUDIENCE)%'
+      $clockSkewSeconds: '%env(int:AUTH_TOKEN_CLOCK_SKEW_SECONDS)%'
+      $maximumLifetimeSeconds: '%env(int:AUTH_TOKEN_MAX_TTL_SECONDS)%'
+
+  App\Identity\Application\Invitation\InvitationDeliveryOutbox:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineInvitationDeliveryOutbox
+
+  App\Identity\Application\Invitation\InvitationDeliveryQueue:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineInvitationDeliveryQueue
+
+  App\Identity\Application\Invitation\InvitationEmailSender:
+    alias: App\Identity\Infrastructure\Notification\UnavailableInvitationEmailSender
+
+  App\Shared\Application\Idempotency\IdempotencyRepository:
+    alias: App\Shared\Infrastructure\Doctrine\DoctrineIdempotencyRepository
+
+  App\Shared\Application\RateLimit\RateLimiter:
+    alias: App\Shared\Infrastructure\Doctrine\DoctrineRateLimiter
+
+  App\Shared\Application\Identifier\IdentifierGenerator:
+    alias: App\Shared\Infrastructure\Identifier\RandomUuidV4Generator
+
+  App\Audit\Application\AuditLogWriter:
+    alias: App\Audit\Infrastructure\Doctrine\DoctrineAuditLogWriter

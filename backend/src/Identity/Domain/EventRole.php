@@ -1,0 +1,14 @@
+<?php
+
+namespace App\Identity\Domain;
+
+enum EventRole: string
+{
+    case EVENT_MANAGER = 'EVENT_MANAGER';
+    case FINANCE_REVIEWER = 'FINANCE_REVIEWER';
+    case SALES_OPERATOR = 'SALES_OPERATOR';
+    case PAYMENT_REVIEWER = 'PAYMENT_REVIEWER';
+    case TICKET_OPERATOR = 'TICKET_OPERATOR';
+    case REPORT_VIEWER = 'REPORT_VIEWER';
+    case HISTORICAL_VIEWER = 'HISTORICAL_VIEWER';
+}

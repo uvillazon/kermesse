@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd" bootstrap="tests/bootstrap.php" colors="true">
+    <testsuites>
+        <testsuite name="Kermesse backend">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="test" force="true" />
+        <env name="APP_DEBUG" value="1" force="true" />
+        <env name="APP_SECRET" value="test-secret-not-for-production" force="true" />
+        <env name="KERNEL_CLASS" value="App\Kernel" />
+        <env name="RATE_LIMIT_ENABLED" value="0" force="true" />
+        <env name="RATE_LIMIT_DEFAULT_PER_MINUTE" value="60" force="true" />
+        <env name="IDEMPOTENCY_HEADER" value="HTTP_IDEMPOTENCY_KEY" force="true" />
+        <env name="DATABASE_URL" value="mysql://invalid:invalid@127.0.0.1:3306/kermesfera_test?charset=utf8mb4" force="true" />
+        <env name="DATABASE_SERVER_VERSION" value="10.4.18-MariaDB" force="true" />
+        <env name="AUTH_TOKEN_SECRET" value="test-auth-secret-with-at-least-32-characters" force="true" />
+        <env name="AUTH_TOKEN_ISSUER" value="kermesfera-test" force="true" />
+        <env name="AUTH_TOKEN_AUDIENCE" value="kermesfera-api-test" force="true" />
+        <env name="AUTH_TOKEN_CLOCK_SKEW_SECONDS" value="0" force="true" />
+        <env name="AUTH_TOKEN_MAX_TTL_SECONDS" value="3600" force="true" />
+        <env name="INVITATION_TOKEN_SECRET" value="test-invitation-secret-with-at-least-32-characters" force="true" />
+        <env name="INVITATION_TOKEN_KEY_VERSION" value="v1" force="true" />
+        <env name="INVITATION_TOKEN_LEGACY_SECRETS" value="{}" force="true" />
+    </php>
+</phpunit>
