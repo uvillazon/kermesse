@@ -14,15 +14,18 @@ Aprendido el 2026-11-03 trabajando desde Claude Code en la nube (`/home/user/ker
 - Tras fusionar un PR, la rama de trabajo se reinicia desde `master` con el mismo nombre y se sube con
   `--force-with-lease` (solo tenía historia ya fusionada).
 - Los PR se fusionan con squash salvo que se pida otro método.
-- La nube no trae la base MariaDB `kermesfera` ni `.env.local`, pero se puede instalar una base de pruebas
-  (ver abajo). Las credenciales nunca se versionan.
+- La nube no trae MariaDB ni `.env.local`, pero se puede montar una base desechable para la suite de
+  integración (verificado el 2026-11-03, se instala MariaDB 10.11):
+  1. `apt-get install -y mariadb-server` (si falla, `apt-get update` antes) y `composer install` en `backend/`.
+  2. `mkdir -p /run/mysqld && chown mysql:mysql /run/mysqld`, luego `mysqld_safe --user=mysql &` y esperar con
+     `mysqladmin ping`; crear base `kermesfera_test` y un usuario
+     local desechable con `mysql -e "..."`.
+  3. Migrar: `APP_ENV=test DATABASE_URL=<url> php bin/console doctrine:migrations:migrate -n`.
+  4. `KERMESFERA_INTEGRATION_DATABASE_URL=<url> DATABASE_SERVER_VERSION=10.11.14-MariaDB php vendor/bin/phpunit`
+     (no `composer test`: falla como root). Para levantar la app (capturas), `COMPOSER_ALLOW_SUPERUSER=1
+     composer install` genera `vendor/autoload_runtime.php`, y un `backend/.env` local (ignorado por git).
+  5. Arrancar el kernel regenera `backend/config/reference.php`: `git checkout` antes de commitear.
+  Las credenciales reales nunca se versionan; las de la base desechable no salen del contenedor.
 
 **Why:** perdimos varios intentos por tratar el 403 como error de red o de cuenta. **How to apply:** ante un 403,
 no reintentar; revisar la instalación de la app y probar `create_branch`. Ver [[project-protocolo-memoria]].
-
-**MariaDB en la nube (2026-11-03):** se puede instalar con `apt-get install -y mariadb-server` (sale 10.11, local
-es 10.4.18), arrancar con `mysqld_safe --user=mysql &` (antes `mkdir -p /run/mysqld && chown mysql:mysql
-/run/mysqld`), crear `kermesfera_test` y migrar con `DATABASE_URL=... php bin/console doctrine:migrations:migrate`.
-Las pruebas de integración corren con `KERMESFERA_INTEGRATION_DATABASE_URL` y `DATABASE_SERVER_VERSION`.
-`composer test` falla como root: usar `php vendor/bin/phpunit`. Al arrancar el kernel se regenera
-`config/reference.php`: descartarlo con `git checkout`.
