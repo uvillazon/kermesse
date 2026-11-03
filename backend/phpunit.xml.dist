@@ -15,6 +15,7 @@
         <env name="IDEMPOTENCY_HEADER" value="HTTP_IDEMPOTENCY_KEY" force="true" />
         <env name="DATABASE_URL" value="mysql://invalid:invalid@127.0.0.1:3306/kermesfera_test?charset=utf8mb4" force="true" />
         <env name="DATABASE_SERVER_VERSION" value="10.4.18-MariaDB" force="true" />
+        <env name="SALE_RESERVATION_TTL_SECONDS" value="900" force="true" />
         <env name="AUTH_TOKEN_SECRET" value="test-auth-secret-with-at-least-32-characters" force="true" />
         <env name="AUTH_TOKEN_ISSUER" value="kermesfera-test" force="true" />
         <env name="AUTH_TOKEN_AUDIENCE" value="kermesfera-api-test" force="true" />

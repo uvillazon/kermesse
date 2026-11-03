@@ -14,8 +14,15 @@ Aprendido el 2026-11-03 trabajando desde Claude Code en la nube (`/home/user/ker
 - Tras fusionar un PR, la rama de trabajo se reinicia desde `master` con el mismo nombre y se sube con
   `--force-with-lease` (solo tenía historia ya fusionada).
 - Los PR se fusionan con squash salvo que se pida otro método.
-- La nube no tiene la base MariaDB `kermesfera` ni `.env.local`: no se pueden correr migraciones ni pruebas de
-  integración allí. Las credenciales nunca se versionan.
+- La nube no trae MariaDB ni `.env.local`, pero se puede montar una base desechable para la suite de
+  integración (verificado el 2026-11-03, se instala MariaDB 10.11):
+  1. `apt-get install -y mariadb-server` (si falla, `apt-get update` antes) y `composer install` en `backend/`.
+  2. `mysqld_safe --user=mysql &`, esperar con `mysqladmin ping`; crear base `kermesfera_test` y un usuario
+     local desechable con `mysql -e "..."`.
+  3. Migrar: `APP_ENV=test DATABASE_URL=<url> php bin/console doctrine:migrations:migrate -n`.
+  4. `KERMESFERA_INTEGRATION_DATABASE_URL=<url> php vendor/bin/phpunit` (no `composer test`: falla como root).
+  5. Arrancar el kernel regenera `backend/config/reference.php`: `git checkout` antes de commitear.
+  Las credenciales reales nunca se versionan; las de la base desechable no salen del contenedor.
 
 **Why:** perdimos varios intentos por tratar el 403 como error de red o de cuenta. **How to apply:** ante un 403,
 no reintentar; revisar la instalación de la app y probar `create_branch`. Ver [[project-protocolo-memoria]].

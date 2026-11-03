@@ -13,7 +13,7 @@ final class TransactionalExecutorTest extends TestCase
     public function testCommitsTheWholeOperation(): void
     {
         $this->requireSqlite();
-        $connection = DriverManager::getConnection(['url' => 'sqlite:///:memory:']);
+        $connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $connection->executeStatement('CREATE TABLE values_store (id INTEGER PRIMARY KEY, value VARCHAR(20))');
         $executor = new TransactionalExecutor($connection);
 
@@ -27,7 +27,7 @@ final class TransactionalExecutorTest extends TestCase
     public function testRollsBackWhenTheOperationFails(): void
     {
         $this->requireSqlite();
-        $connection = DriverManager::getConnection(['url' => 'sqlite:///:memory:']);
+        $connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $connection->executeStatement('CREATE TABLE values_store (id INTEGER PRIMARY KEY, value VARCHAR(20))');
         $executor = new TransactionalExecutor($connection);
 
