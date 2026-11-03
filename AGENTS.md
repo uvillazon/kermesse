@@ -19,5 +19,6 @@ Después de un cambio significativo:
 - Describe decisiones y riesgos de forma breve.
 - Mantén la memoria en Markdown legible y versionable.
 
-La base automática de Claude-Mem es local y no debe copiarse al repositorio.
+La memoria de trabajo vive en `.ai-memory/memoria/` (índice `MEMORY.md`) y las bitácoras en `docs/bitacoras/`.
+No se usa Claude-Mem ni ningún servicio externo de memoria.
 
