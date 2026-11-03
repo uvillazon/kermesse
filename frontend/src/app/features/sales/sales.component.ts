@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,8 +6,11 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { firstValueFrom } from 'rxjs';
-import { EventContextService } from '../../core/services/event-context.service';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { AuthService } from '../../core/services/auth.service';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 type Tab = 'pos' | 'verify' | 'history';
 
@@ -70,14 +73,15 @@ interface ApiSale {
 @Component({
   selector: 'app-sales',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule],
+  imports: [FechaPipe, CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow">Operación en vivo &bull; MariaDB</span>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
           <h1>Ventas y pagos</h1>
-          <p>Registro de ventas en tiempo real con bloqueo pesimista de inventario y emisión inmediata de tickets QR.</p>
+          <p>Cobra en el puesto, revisa los pagos por QR y consulta el historial.</p>
         </div>
         <div class="segmented">
           <button [class.active]="tab() === 'pos'" (click)="tab.set('pos')">
@@ -108,7 +112,7 @@ interface ApiSale {
 
       @switch (tab()) {
         @case ('pos') {
-          <div class="pos">
+          <div class="pos" [class.has-items]="itemCount() > 0">
             <div class="pos-catalog panel">
               <div class="panel-head">
                 <h2><i class="pi pi-th-large"></i> Catálogo disponible en caja</h2>
@@ -159,6 +163,9 @@ interface ApiSale {
                     (click)="add(p.id)"
                     [disabled]="ctx.readOnly() || p.available_quantity <= 0"
                   >
+                    @if (cart()[p.id]; as qty) {
+                      <span class="in-cart" [attr.aria-label]="qty + ' en el pedido'">{{ qty }}</span>
+                    }
                     <div class="prod-top">
                       <span class="stand-tag">{{ p.stand_name }}</span>
                       <span class="code-tag mono">{{ p.code }}</span>
@@ -180,7 +187,7 @@ interface ApiSale {
               </section>
             </div>
 
-            <aside class="panel cart">
+            <aside class="panel cart" id="orden-actual">
               <div class="panel-head">
                 <h2><i class="pi pi-receipt"></i> Orden actual</h2>
                 <span class="pill blue">{{ itemCount() }} ítems</span>
@@ -212,7 +219,7 @@ interface ApiSale {
                     pInputText
                     id="buyer_email"
                     [(ngModel)]="buyerEmail"
-                    placeholder="padre.familia@saintandrews.edu.bo"
+                    placeholder="correo@ejemplo.com"
                     class="w-full"
                     required
                   />
@@ -279,6 +286,12 @@ interface ApiSale {
                 }
               </div>
             </aside>
+            @if (itemCount() > 0) {
+              <div class="mobile-action-bar" role="region" aria-label="Resumen del pedido">
+                <span><b>{{ itemCount() }}</b> {{ itemCount() === 1 ? 'ítem' : 'ítems' }} · <b class="money">Bs {{ total() | number:'1.2-2' }}</b></span>
+                <button type="button" (click)="goToCart()">Cobrar <i class="pi pi-arrow-down"></i></button>
+              </div>
+            }
           </div>
         }
 
@@ -331,9 +344,9 @@ interface ApiSale {
               [rowsPerPageOptions]="[5, 10, 20]"
               [showCurrentPageReport]="true"
               currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pagos por verificar"
-              styleClass="p-datatable-sm"
+              styleClass="p-datatable-sm" class="kf-stack"
             >
-              <ng-template pTemplate="header">
+              <ng-template #header>
                 <tr>
                   <th>Ticket</th>
                   <th>Fecha / Hora</th>
@@ -345,19 +358,19 @@ interface ApiSale {
                   <th style="text-align: right">Acciones</th>
                 </tr>
               </ng-template>
-              <ng-template pTemplate="body" let-s>
+              <ng-template #body let-s>
                 <tr>
-                  <td><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
-                  <td>{{ s.created_at | date:'short' }}</td>
-                  <td>
+                  <td data-label="Ticket"><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
+                  <td data-label="Fecha / Hora">{{ s.created_at | fecha }}</td>
+                  <td data-label="Comprador">
                     <b>{{ s.buyer_name || 'Comprador' }}</b><br />
                     <small class="muted">{{ s.buyer_email }}</small>
                   </td>
-                  <td>{{ describeItems(s) }}</td>
-                  <td>{{ s.operator_name }}</td>
-                  <td style="text-align: right" class="money"><b>Bs {{ s.total }}</b></td>
-                  <td><span class="pill yellow">Por verificar</span></td>
-                  <td style="text-align: right">
+                  <td data-label="Detalle de productos" data-wide>{{ describeItems(s) }}</td>
+                  <td data-label="Operador">{{ s.operator_name }}</td>
+                  <td data-label="Monto QR" style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
+                  <td data-label="Estado"><span class="pill yellow">Por verificar</span></td>
+                  <td data-label="" style="text-align: right">
                     <div class="row-actions">
                       <p-button
                         size="small"
@@ -381,7 +394,7 @@ interface ApiSale {
                   </td>
                 </tr>
               </ng-template>
-              <ng-template pTemplate="emptymessage">
+              <ng-template #emptymessage>
                 <tr>
                   <td colspan="8">
                     <div class="empty-grid-state">
@@ -400,7 +413,7 @@ interface ApiSale {
             <div class="panel-head">
               <div>
                 <h2><i class="pi pi-list"></i> Historial general de ventas</h2>
-                <small class="muted">Registro transaccional completo en MariaDB con trazabilidad por cajero y ticket.</small>
+                <small class="muted">Todas las ventas del evento, con quién cobró y el ticket emitido.</small>
               </div>
               <span class="grid-meta">{{ filteredSales().length }} de {{ sales().length }} ventas</span>
             </div>
@@ -458,9 +471,9 @@ interface ApiSale {
               [rowsPerPageOptions]="[5, 10, 25, 50]"
               [showCurrentPageReport]="true"
               currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} ventas"
-              styleClass="p-datatable-sm"
+              styleClass="p-datatable-sm" class="kf-stack"
             >
-              <ng-template pTemplate="header">
+              <ng-template #header>
                 <tr>
                   <th>Ticket</th>
                   <th>Fecha / Hora</th>
@@ -472,30 +485,30 @@ interface ApiSale {
                   <th>Estado</th>
                 </tr>
               </ng-template>
-              <ng-template pTemplate="body" let-s>
+              <ng-template #body let-s>
                 <tr>
-                  <td><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
-                  <td>{{ s.created_at | date:'short' }}</td>
-                  <td>
+                  <td data-label="Ticket"><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
+                  <td data-label="Fecha / Hora">{{ s.created_at | fecha }}</td>
+                  <td data-label="Comprador">
                     <b>{{ s.buyer_name || 'Comprador' }}</b><br />
                     <small class="muted">{{ s.buyer_email }}</small>
                   </td>
-                  <td><small>{{ describeItems(s) }}</small></td>
-                  <td>{{ s.operator_name }}</td>
-                  <td>
+                  <td data-label="Productos" data-wide><small>{{ describeItems(s) }}</small></td>
+                  <td data-label="Operador">{{ s.operator_name }}</td>
+                  <td data-label="Medio">
                     <span class="pill" [class.blue]="s.payment.method === 'cash'" [class.cyan]="s.payment.method !== 'cash'">
                       {{ s.payment.method === 'cash' ? 'Efectivo' : 'QR / Transf.' }}
                     </span>
                   </td>
-                  <td style="text-align: right" class="money"><b>Bs {{ s.total }}</b></td>
-                  <td>
+                  <td data-label="Total" style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
+                  <td data-label="Estado">
                     <span class="pill" [class.green]="s.status === 'confirmed'" [class.yellow]="s.status === 'pending_payment'">
                       {{ s.status === 'confirmed' ? 'Confirmado' : 'Pendiente' }}
                     </span>
                   </td>
                 </tr>
               </ng-template>
-              <ng-template pTemplate="emptymessage">
+              <ng-template #emptymessage>
                 <tr>
                   <td colspan="8">
                     <div class="empty-grid-state">
@@ -552,9 +565,23 @@ interface ApiSale {
     .sale-success div { display: flex; flex-direction: column; }
     .row-actions { display: inline-flex; gap: .4rem; justify-content: flex-end; }
     @media (max-width: 1000px) { .pos { grid-template-columns: 1fr; } .cart { position: static; } }
+    .prod { position: relative; }
+    .in-cart {
+      position: absolute; top: -.45rem; right: -.45rem; min-width: 1.6rem; height: 1.6rem; padding: 0 .35rem;
+      border-radius: 999px; background: var(--kf-primary); color: #fff; font-size: .8rem; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(6, 59, 115, .3);
+    }
+    @media (max-width: 700px) {
+      /* Dos productos por fila y una barra fija para cobrar sin bajar hasta el pedido. */
+      .products { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; padding: .85rem; }
+      .prod { padding: .7rem; min-height: 44px; }
+      .prod .code-tag { display: none; }
+      .qty button { width: 36px; height: 36px; }
+      .pos.has-items { padding-bottom: 76px; }
+    }
   `],
 })
-export class SalesComponent implements OnInit {
+export class SalesComponent {
   protected readonly ctx = inject(EventContextService);
   protected readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
@@ -562,6 +589,9 @@ export class SalesComponent implements OnInit {
   protected readonly tab = signal<Tab>('pos');
   protected readonly products = signal<ApiProduct[]>([]);
   protected readonly sales = signal<ApiSale[]>([]);
+  private readonly catalogError = signal<string | null>(null);
+  private readonly salesError = signal<string | null>(null);
+  protected readonly loadError = computed(() => this.catalogError() ?? this.salesError());
   protected readonly cart = signal<Record<string, number>>({});
   protected readonly paymentMethod = signal<'cash' | 'qr_transfer'>('cash');
   protected readonly submitting = signal(false);
@@ -585,7 +615,7 @@ export class SalesComponent implements OnInit {
   protected readonly historyMethodFilter = signal('');
   protected readonly historyOperatorFilter = signal('');
 
-  protected buyerEmail = 'padre.familia@saintandrews.edu.bo';
+  protected buyerEmail = '';
   protected buyerName = '';
 
   protected readonly standNames = computed(() =>
@@ -666,9 +696,21 @@ export class SalesComponent implements OnInit {
   protected readonly itemCount = computed(() => this.cartLines().reduce((t, l) => t + l.qty, 0));
   protected readonly total = computed(() => this.cartLines().reduce((t, l) => t + l.subtotal, 0));
 
-  ngOnInit(): void {
-    this.loadCatalog();
-    this.loadSales();
+  constructor() {
+    onActiveEventChange(() => {
+      // El carrito y la última venta pertenecen al evento anterior: se descartan.
+      this.products.set([]);
+      this.sales.set([]);
+      this.cart.set({});
+      this.lastSale.set(null);
+      this.errorMessage.set(null);
+      this.reload();
+    });
+  }
+
+  /** En celular el pedido queda debajo del catálogo: la barra de cobro lleva hasta él. */
+  goToCart(): void {
+    document.getElementById('orden-actual')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   resetPosFilters(): void {
@@ -684,33 +726,42 @@ export class SalesComponent implements OnInit {
     this.historyOperatorFilter.set('');
   }
 
+  reload(): void {
+    this.loadCatalog();
+    this.loadSales();
+  }
+
   async loadCatalog(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.catalogError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiProduct[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products?page_size=100`)
       );
-      if (res?.data) {
-        this.products.set(res.data);
-      }
+      if (this.ctx.isStale(eventId)) return;
+      this.products.set(res?.data ?? []);
     } catch (err: unknown) {
-      console.warn('[SalesComponent] No se pudo cargar catálogo del backend:', err);
+      if (this.ctx.isStale(eventId)) return;
+      this.products.set([]);
+      this.catalogError.set(describeLoadError(err, 'No se pudo cargar el catálogo para vender.'));
     }
   }
 
   async loadSales(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.salesError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiSale[] }>(`/organizations/${orgId}/events/${eventId}/sales?page_size=100`)
       );
-      if (res?.data) {
-        this.sales.set(res.data);
-      }
+      if (this.ctx.isStale(eventId)) return;
+      this.sales.set(res?.data ?? []);
     } catch (err: unknown) {
-      console.warn('[SalesComponent] No se pudieron cargar ventas del backend:', err);
+      if (this.ctx.isStale(eventId)) return;
+      this.sales.set([]);
+      this.salesError.set(describeLoadError(err, 'No se pudo cargar el historial de ventas.'));
     }
   }
 
@@ -754,7 +805,7 @@ export class SalesComponent implements OnInit {
     this.errorMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     const idempotencyKey = `pos-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
     try {
@@ -782,7 +833,7 @@ export class SalesComponent implements OnInit {
       }
     } catch (err: unknown) {
       const anyErr = err as { message?: string; originalError?: { error?: { message?: string } } };
-      const msg = anyErr?.originalError?.error?.message || anyErr?.message || 'Error al procesar la venta en el backend.';
+      const msg = anyErr?.originalError?.error?.message || anyErr?.message || 'No se pudo registrar la venta. Intenta de nuevo.';
       this.errorMessage.set(msg);
     } finally {
       this.submitting.set(false);
@@ -799,7 +850,7 @@ export class SalesComponent implements OnInit {
     this.reviewMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     const idempotencyKey = `pay-rev-${sale.id}-${decision}-${Date.now()}`;
 
     try {

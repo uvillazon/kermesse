@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Ticket\Infrastructure\Http;
 
+use App\Identity\Application\Authorization\AuthorizationPolicy;
+use App\Identity\Application\Authorization\AuthorizationRequest;
+use App\Identity\Domain\Permission;
 use App\Shared\Infrastructure\Http\ApiRequestInput;
+use App\Shared\Infrastructure\Http\AuthenticatedActorResolver;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 final readonly class ListTicketsController
@@ -16,6 +21,8 @@ final readonly class ListTicketsController
     public function __construct(
         private Connection $connection,
         private ApiRequestInput $input,
+        private AuthorizationPolicy $policy,
+        private AuthenticatedActorResolver $actors,
     ) {
     }
 
@@ -28,6 +35,17 @@ final readonly class ListTicketsController
     {
         $this->input->uuid($organizationId, 'organizationId');
         $this->input->uuid($eventId, 'eventId');
+
+        $decision = $this->policy->decide(new AuthorizationRequest(
+            $this->actors->resolve($request),
+            $organizationId,
+            Permission::TICKET_READ,
+            $eventId,
+            new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+        ));
+        if (!$decision->allowed) {
+            throw new AccessDeniedHttpException('No tienes permiso para consultar los tickets de este evento.');
+        }
 
         $tickets = $this->connection->fetchAllAssociative(
             'SELECT t.id, t.organization_id, t.event_id, t.sale_id, t.ticket_number, t.qr_code,

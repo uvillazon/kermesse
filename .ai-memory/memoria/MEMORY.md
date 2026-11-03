@@ -2,5 +2,10 @@
 - [Sin Claude-Mem](feedback-sin-claude-mem.md) — no usar Claude-Mem ni servicios externos de memoria
 - [Protocolo de memoria](project-protocolo-memoria.md) — dónde vive la memoria y por qué dentro del repo
 - [Matriz de roles v0.3](project-matriz-roles-v03.md) — borrador del 2026-11-03 y decisiones que la bloquean
-- [Sesiones en la nube y GitHub](reference-sesion-nube-github.md) — 403 al hacer push, create_branch y que no hay MariaDB en la nube
+- [Auditoría frontend](project-frontend-auditoria.md) — 2026-11-03: mocks eliminados (regla: vacío o error visible); recarga al cambiar evento (onActiveEventChange+isStale); organización desde el login; pendiente roles en UI
+- [Estilo del frontend](project-frontend-estilo.md) — textos sin jerga, es-BO, pipe `fecha` (UTC), encabezado compacto, historial en frases y celular
+- [Sesiones en la nube y GitHub](reference-sesion-nube-github.md) — 403 al hacer push, create_branch y cómo montar MariaDB para la suite de integración
+- [Fechas en tests](feedback-fechas-en-tests.md) — tests HTTP usan reloj real: fechas relativas; env nuevas en phpunit.xml.dist
+- [Perfil del usuario con Git](user-perfil-git.md) — no conoce PR/merge: explicar simple y verificar en GitHub antes de dar algo por fusionado
+- [Autorización de listados GET](project-autorizacion-listados-get.md) — permiso de cada GET y por qué eventos filtra para colaboradores
 - [Contraseñas del login](project-contrasenas-login.md) — hash, asignación por invitación o comando, límite de intentos

@@ -251,7 +251,7 @@ final class AssignEventAccessControllerIntegrationTest extends WebTestCase
             'email' => 'queued-invitation@example.test',
             'target_access_type' => 'operational',
             'roles' => ['SALES_OPERATOR'],
-            'expires_at' => (new \DateTimeImmutable('+1 day'))->format(DATE_ATOM),
+            'expires_at' => $this->futureInvitationExpiry(),
         ];
 
         $this->requestInvitation($payload, 'create-invitation-http-key-1');
@@ -294,7 +294,7 @@ final class AssignEventAccessControllerIntegrationTest extends WebTestCase
             'email' => $email,
             'target_access_type' => 'operational',
             'roles' => ['SALES_OPERATOR'],
-            'expires_at' => (new \DateTimeImmutable('+1 day'))->format(DATE_ATOM),
+            'expires_at' => $this->futureInvitationExpiry(),
         ], 'accept-invitation-fixture-key');
         self::assertResponseStatusCodeSame(202);
         $invitationId = $this->response()['data']['invitation_id'];
@@ -342,6 +342,14 @@ final class AssignEventAccessControllerIntegrationTest extends WebTestCase
             'SELECT COUNT(*) FROM event_memberships WHERE event_id = ? AND user_id = ?',
             [self::EVENT_ID, $userId],
         ));
+    }
+
+    /** El controlador valida contra el reloj real: una fecha fija termina caducando. */
+    private function futureInvitationExpiry(): string
+    {
+        return (new \DateTimeImmutable('+2 days', new \DateTimeZone('UTC')))
+            ->setTime(18, 0)
+            ->format(\DateTimeInterface::ATOM);
     }
 
     /** @param array{roles: list<string>} $changes */
