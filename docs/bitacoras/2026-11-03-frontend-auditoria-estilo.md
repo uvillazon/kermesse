@@ -18,8 +18,8 @@
 - Descripciones de roles según `RolePermissionMap`, no según la matriz v0.3 (no aprobada).
 
 ## Pendiente
-- Seguridad (tareas sugeridas en la sesión): contraseñas reales en el login; autorización por organización en
-  listados de eventos e historial. Ver memoria `project-seguridad-pendiente`.
+- Seguridad: la autorización de listados ya entró con el PR #7; las contraseñas reales están en el PR #6 (abierto,
+  con conflictos contra `master`). Ver memoria `project-seguridad-pendiente`.
 - Control de la UI por rol. Siguiente paso: mapear menús y botones a los permisos de `RolePermissionMap`.
 - "Canjear" visible en tickets anulados; login con cuentas demo; endpoint para abrir eventos en borrador.
 

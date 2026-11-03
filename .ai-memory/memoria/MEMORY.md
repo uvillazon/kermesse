@@ -6,5 +6,6 @@
 - [Estilo del frontend](project-frontend-estilo.md) — textos sin jerga, es-BO, pipe `fecha` (UTC), encabezado compacto, historial en frases y celular
 - [Sesiones en la nube y GitHub](reference-sesion-nube-github.md) — 403 al hacer push, create_branch y cómo montar MariaDB para la suite de integración
 - [Fechas en tests](feedback-fechas-en-tests.md) — tests HTTP usan reloj real: fechas relativas; env nuevas en phpunit.xml.dist
-- [Seguridad pendiente](project-seguridad-pendiente.md) — login acepta cualquier clave ≥6; listados de eventos e historial sin autorización por organización
+- [Seguridad pendiente](project-seguridad-pendiente.md) — login acepta cualquier clave ≥6 (lo resuelve el PR #6, abierto); listados ya protegidos por el PR #7
 - [Perfil del usuario con Git](user-perfil-git.md) — no conoce PR/merge: explicar simple y verificar en GitHub antes de dar algo por fusionado
+- [Autorización de listados GET](project-autorizacion-listados-get.md) — permiso de cada GET y por qué eventos filtra para colaboradores

@@ -38,7 +38,6 @@ Todo lo anterior se fusionó en `master` con el PR #4 el 2026-11-03.
 - "Tickets emitidos" muestra "Canjear" también en tickets anulados.
 - El login conserva cuentas de demostración del prototipo y un correo precargado; enlaza a `/tienda/halloween-2026`.
 - `ApiService` sin uso; `environment.prod.ts` apunta a `127.0.0.1:8000`.
-- Reportes: si falla una sola carga (p. ej. gastos), se vacía toda la pantalla.
 - No hay endpoint para abrir un evento en borrador (para la demo se hizo por SQL).
 - Seguridad del backend: ver [[project-seguridad-pendiente]].
 - Endpoints sin pantalla: `ownership-transfers`, `invitations/accept`. En OpenAPI pero no en el backend:
