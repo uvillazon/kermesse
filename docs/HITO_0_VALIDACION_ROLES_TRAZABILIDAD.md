@@ -30,10 +30,33 @@ Revisión documental. No sustituye la aprobación de la organización. Las dos p
 | 7 | Permisos `A` (11 celdas) sin regla de alcance concreta por puesto/reporte. | Imposible traducir a políticas. | Tabla de alcance por rol (puesto, tipo de reporte). |
 | 8 | Criterio 1 usa `organización + evento + usuario + acción`; la matriz no define ámbito de `HISTORICAL_VIEWER` ni duración/revocación (pendiente en sección 6). | Acceso histórico sin caducidad. | Definir vigencia y revocación. |
 
+## Revalidación v0.2 → v0.3 (2026-11-03)
+
+Revisión documental contra las reglas `RN-PLT`, `RN-COM`, `RN-USR`, `RN-HIS` y `RN-FAC` (2026-10-29). No sustituye la aprobación de la organización.
+
+| # | Estado | Detalle |
+|---|---|---|
+| 1 | Resuelto (2026-10-30) | `catalog.read` en matriz y catálogo persistido. |
+| 2 | Aplicado en v0.3 | Nuevo `ticket.resend`; `EVENT_MANAGER` ✓, `SALES_OPERATOR` `A`. Falta código y OpenAPI. |
+| 3 | Aplicado en v0.3 | Historias `US-H0-024` a `US-H0-026` para catálogo público, estado de compra y reenvío propio. |
+| 4 | Parcial | `event.close` ya estaba en `P`; `payment.review` pasó a `A` hasta decidir si se separan los roles. Falta decidir quién cierra. |
+| 5–8 | Abiertos | Sin cambio; 6 y 8 requieren decisión de la organización. |
+
+Hallazgos nuevos de esta revalidación:
+
+| # | Hallazgo | Impacto | Propuesta |
+|---|---|---|---|
+| 9 | `RN-COM-001` exige habilitación comercial para vender y canjear, pero ningún permiso ni rol la gestiona. | Bloquea el flujo de alta de eventos. | Decidir quién la compra o solicita y crear su permiso. |
+| 10 | `RN-USR-001` pide suspender usuarios sin perder auditoría; la matriz solo define revocar. | Estado de usuario sin regla de autorización. | Documentar suspensión como cambio auditado bajo `org.manage_members`. |
+| 11 | `RN-HIS-001`: la política de baja y retención sigue abierta y cruza con el hallazgo 8. | Acceso histórico sin caducidad. | Resolver 8 junto con la política de retención. |
+| 12 | Cambio de comportamiento: `RolePermissionMap` concede `payment.review` de base a `FINANCE_REVIEWER` y `PAYMENT_REVIEWER`, pero la matriz v0.3 lo marca `A`. | Documento y código divergen. | Alinear el código tras la aprobación; hasta entonces el código manda. |
+
+`RN-PLT-001` (sin rol de soporte global) y `RN-FAC-*` (sin permisos en la etapa 1) son coherentes con la matriz sin cambios.
+
 ## Bloqueos que persisten (de la trazabilidad §4)
 
 Criterios contables, canal de QR bancario, política de correos/tickets y cifras de capacidad siguen sin resolver; ninguno depende de los hallazgos de arriba.
 
 ## Siguiente paso
 
-Aplicar los hallazgos 1–4 a la matriz (v0.2), obtener decisión de la organización sobre 4, 6 y 8, y luego abordar OpenAPI.
+Obtener decisión de la organización sobre 4, 6, 8, 9 y quién cierra el evento; luego alinear `RolePermissionMap`, `Permission` y OpenAPI con la matriz v0.3.
