@@ -39,5 +39,9 @@ total y "Cobrar". Tickets: lector primero (`order`).
 en `styles.scss` las muestra como tarjetas. Al crear una tabla nueva, seguir el mismo patrón.
 **Ojo:** PrimeNG 22 ignora `styleClass` en `p-table` (el `p-datatable-sm` existente nunca se aplicó); usar `class`.
 
+**Recarga de eventos:** `EventContextService.refreshEvents()` solo pasa a `loading` en la primera carga o al cambiar
+de organización. **Why:** el layout desmonta la pantalla cuando el estado es `loading`, y una recarga tras
+crear o abrir un evento borraba su mensaje de éxito (visto el 2026-11-03 en las capturas).
+
 **Encabezado de página:** `.page-header` en `styles.scss` sin tarjeta: etiqueta, título 1.4rem, una línea de
 descripción y acciones a la derecha, separados del contenido por una línea.

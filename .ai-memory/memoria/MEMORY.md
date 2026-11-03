@@ -9,3 +9,4 @@
 - [Perfil del usuario con Git](user-perfil-git.md) — no conoce PR/merge: explicar simple y verificar en GitHub antes de dar algo por fusionado
 - [Autorización de listados GET](project-autorizacion-listados-get.md) — permiso de cada GET y por qué eventos filtra para colaboradores
 - [Contraseñas del login](project-contrasenas-login.md) — hash, asignación por invitación o comando, límite de intentos
+- [Abrir evento](project-abrir-evento.md) — borrador → abierto solo por propietario/admin (provisional hasta decidir habilitación comercial)

@@ -776,6 +776,40 @@ paths:
                 $ref: '#/components/schemas/CommandResourceResponse'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /organizations/{organizationId}/events/{eventId}/opening:
+    post:
+      tags: [Events]
+      operationId: openEvent
+      description: >-
+        Pasa un evento de borrador a abierto para que pueda vender y canjear. Solo propietario o
+        administrador de la organización (org.manage_members) mientras no se decida quién gestiona la
+        habilitación comercial (RN-COM-001), que aún no está implementada. Un evento cerrado no se reabre.
+        No lleva cuerpo. Registra `event.opened` en la auditoría.
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Evento abierto (o respuesta guardada si se repite la misma Idempotency-Key).
+        '403':
+          description: El usuario no es propietario ni administrador de la organización.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: El evento no pertenece a la organización.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El evento ya está abierto o está cerrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /organizations/{organizationId}/events/{eventId}/closure:
     post:
       tags: [Closure]

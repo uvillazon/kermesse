@@ -35,10 +35,8 @@ Todo lo anterior se fusionó en `master` con el PR #4 el 2026-11-03.
 
 **Pendiente:**
 - Sin control de UI por rol: cualquier usuario autenticado ve todos los menús y botones.
-- "Tickets emitidos" muestra "Canjear" también en tickets anulados.
 - El login enlaza a `/tienda/halloween-2026` y precarga un correo; las cuentas demo ya solo existen en desarrollo (PR #6).
 - `ApiService` sin uso; `environment.prod.ts` apunta a `127.0.0.1:8000`.
-- No hay endpoint para abrir un evento en borrador (para la demo se hizo por SQL).
 - Seguridad del backend resuelta por los PR #6 y #7: ver [[project-contrasenas-login]] y [[project-autorizacion-listados-get]].
 - Endpoints sin pantalla: `ownership-transfers`, `invitations/accept`. En OpenAPI pero no en el backend:
   `exports`, `reports/balance`, `closure`, `payments/.../confirmation`.
