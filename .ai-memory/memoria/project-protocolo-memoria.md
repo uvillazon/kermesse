@@ -14,3 +14,7 @@ uso. `.ai-memory/` ya existía con architecture/decisions/hitos/known-issues y s
 
 **How to apply:** los comandos nuevos solo se cargan al iniciar sesión; si `/cierre` no existe,
 reiniciar la sesión o seguir `.claude/commands/cierre.md` a mano. Ver [[feedback-sin-claude-mem]].
+
+Actualización 2026-11-03: las rutas de `CLAUDE.md` y de los comandos pasaron a relativas a la raíz del repo
+(antes eran `D:\ProyectosPhp\...`), para que funcionen igual en local y en la nube. Primera prueba de
+`/cierre` → `/contexto` ejecutada ese día; ver la bitácora `docs/bitacoras/2026-11-03-matriz-roles-v03.md`.
