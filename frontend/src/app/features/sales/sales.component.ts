@@ -215,7 +215,7 @@ interface ApiSale {
                     pInputText
                     id="buyer_email"
                     [(ngModel)]="buyerEmail"
-                    placeholder="padre.familia@saintandrews.edu.bo"
+                    placeholder="correo@ejemplo.com"
                     class="w-full"
                     required
                   />
@@ -336,7 +336,7 @@ interface ApiSale {
               currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pagos por verificar"
               styleClass="p-datatable-sm"
             >
-              <ng-template pTemplate="header">
+              <ng-template #header>
                 <tr>
                   <th>Ticket</th>
                   <th>Fecha / Hora</th>
@@ -348,7 +348,7 @@ interface ApiSale {
                   <th style="text-align: right">Acciones</th>
                 </tr>
               </ng-template>
-              <ng-template pTemplate="body" let-s>
+              <ng-template #body let-s>
                 <tr>
                   <td><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
                   <td>{{ s.created_at | date:'short' }}</td>
@@ -384,7 +384,7 @@ interface ApiSale {
                   </td>
                 </tr>
               </ng-template>
-              <ng-template pTemplate="emptymessage">
+              <ng-template #emptymessage>
                 <tr>
                   <td colspan="8">
                     <div class="empty-grid-state">
@@ -463,7 +463,7 @@ interface ApiSale {
               currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} ventas"
               styleClass="p-datatable-sm"
             >
-              <ng-template pTemplate="header">
+              <ng-template #header>
                 <tr>
                   <th>Ticket</th>
                   <th>Fecha / Hora</th>
@@ -475,7 +475,7 @@ interface ApiSale {
                   <th>Estado</th>
                 </tr>
               </ng-template>
-              <ng-template pTemplate="body" let-s>
+              <ng-template #body let-s>
                 <tr>
                   <td><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
                   <td>{{ s.created_at | date:'short' }}</td>
@@ -498,7 +498,7 @@ interface ApiSale {
                   </td>
                 </tr>
               </ng-template>
-              <ng-template pTemplate="emptymessage">
+              <ng-template #emptymessage>
                 <tr>
                   <td colspan="8">
                     <div class="empty-grid-state">
@@ -591,7 +591,7 @@ export class SalesComponent {
   protected readonly historyMethodFilter = signal('');
   protected readonly historyOperatorFilter = signal('');
 
-  protected buyerEmail = 'padre.familia@saintandrews.edu.bo';
+  protected buyerEmail = '';
   protected buyerName = '';
 
   protected readonly standNames = computed(() =>

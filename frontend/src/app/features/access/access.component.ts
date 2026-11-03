@@ -114,7 +114,7 @@ const ORG_ACCESS: Record<string, string> = {
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} miembros"
           styleClass="p-datatable-sm"
         >
-          <ng-template pTemplate="header">
+          <ng-template #header>
             <tr>
               <th>Persona</th>
               <th>Acceso organizacional</th>
@@ -123,7 +123,7 @@ const ORG_ACCESS: Record<string, string> = {
               <th style="width: 110px; text-align: right">Acciones</th>
             </tr>
           </ng-template>
-          <ng-template pTemplate="body" let-m>
+          <ng-template #body let-m>
             <tr>
               <td>
                 <div class="user-cell">
@@ -164,7 +164,7 @@ const ORG_ACCESS: Record<string, string> = {
               </td>
             </tr>
           </ng-template>
-          <ng-template pTemplate="emptymessage">
+          <ng-template #emptymessage>
             <tr>
               <td colspan="5">
                 <div class="empty-grid-state">
@@ -228,14 +228,14 @@ const ORG_ACCESS: Record<string, string> = {
             currentPageReportTemplate="{first}-{last} de {totalRecords}"
             styleClass="p-datatable-sm"
           >
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <tr>
                 <th>Correo invitado</th>
                 <th>Roles propuestos</th>
                 <th>Estado</th>
               </tr>
             </ng-template>
-            <ng-template pTemplate="body" let-i>
+            <ng-template #body let-i>
               <tr>
                 <td>
                   <div class="who">
@@ -257,7 +257,7 @@ const ORG_ACCESS: Record<string, string> = {
                 </td>
               </tr>
             </ng-template>
-            <ng-template pTemplate="emptymessage">
+            <ng-template #emptymessage>
               <tr>
                 <td colspan="3">
                   <div class="empty-grid-state">

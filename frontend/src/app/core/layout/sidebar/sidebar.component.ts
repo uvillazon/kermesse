@@ -19,10 +19,6 @@ interface NavGroup { title: string; items: NavItem[]; }
           }
         </div>
       }
-      <div class="foot">
-        <small>Prototipo navegable</small>
-        <b>Datos simulados · sin API</b>
-      </div>
     </aside>
   `,
   styles: [`
@@ -35,8 +31,6 @@ interface NavGroup { title: string; items: NavItem[]; }
     .link:hover { background: #f4f6f9; }
     .link.active { background: var(--kf-primary-soft); color: var(--kf-primary); font-weight: 700; }
     .link.active i { color: var(--kf-primary); }
-    .foot { margin-top: auto; background: var(--kf-accent-soft); border-radius: 10px; padding: .7rem; display: flex;
-      flex-direction: column; font-size: .75rem; color: #6b4d00; }
     @media (max-width: 900px) {
       .sidebar { position: fixed; top: 64px; left: -260px; z-index: 99; height: calc(100vh - 64px);
         transition: left .2s ease; box-shadow: 4px 0 16px rgba(0,0,0,.06); }

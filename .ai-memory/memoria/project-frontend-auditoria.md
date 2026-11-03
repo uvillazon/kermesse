@@ -38,9 +38,14 @@ barra superior solo si hay más de una. Las sesiones guardadas sin `organization
 - Endpoints sin pantalla: `ownership-transfers`, `invitations/accept`. En OpenAPI pero no en el backend:
   `exports`, `reports/balance`, `closure`, `payments/.../confirmation`.
 
-**Ojo en tests:** las tablas `p-table` de PrimeNG no pintan filas en jsdom (ni la cabecera). Revisar solo el DOM
-deja pasar datos falsos; el spec revisa también el valor de todas las señales del componente. Se comprobó
-reinsertando un gasto falso: el test falló como debía.
+**PrimeNG 22 ignora `pTemplate="header|body|emptymessage"`:** las tablas de Inicio, Reportes, Ventas, Accesos y
+Eventos salían sin filas ni cabecera, también en el navegador (se vio al capturar pantallas el 2026-11-03).
+Usar siempre `<ng-template #header>` / `#body` / `#emptymessage`. Test: "Tablas de PrimeNG" en
+`screens-without-mock-data.spec.ts`. El spec de mocks revisa además el valor de las señales del componente.
+
+**Capturas de pantallas:** página publicada con capturas reales de cada pantalla y datos de demostración
+(Colegio Demo Los Andes). Para regenerarlas: base `kermesfera_demo`, `backend/.env` local (ignorado por git),
+`php -S 127.0.0.1:8000 -t public`, `ng serve` y Playwright.
 
 **Why:** el usuario podía decidir con números falsos sin enterarse (un evento sin gastos mostraba gastos inventados).
 Ver [[project-matriz-roles-v03]] para el bloqueo de `event.close`.

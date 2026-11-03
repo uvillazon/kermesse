@@ -164,7 +164,7 @@ interface ApiAuditLog {
             currentPageReportTemplate="{first}-{last} de {totalRecords} productos"
             styleClass="p-datatable-sm"
           >
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <tr>
                 <th>Producto</th>
                 <th>Puesto</th>
@@ -172,7 +172,7 @@ interface ApiAuditLog {
                 <th style="text-align: right">Ingreso</th>
               </tr>
             </ng-template>
-            <ng-template pTemplate="body" let-p>
+            <ng-template #body let-p>
               <tr>
                 <td>
                   <b>{{ p.name }}</b><br />
@@ -183,7 +183,7 @@ interface ApiAuditLog {
                 <td style="text-align: right" class="money"><b>Bs {{ p.unit_price * p.sold | number:'1.2-2' }}</b></td>
               </tr>
             </ng-template>
-            <ng-template pTemplate="emptymessage">
+            <ng-template #emptymessage>
               <tr>
                 <td colspan="4">
                   <div class="empty-grid-state">
@@ -252,14 +252,14 @@ interface ApiAuditLog {
             currentPageReportTemplate="{first}-{last} de {totalRecords} gastos"
             styleClass="p-datatable-sm"
           >
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <tr>
                 <th>Concepto</th>
                 <th>Categoría</th>
                 <th style="text-align: right">Monto</th>
               </tr>
             </ng-template>
-            <ng-template pTemplate="body" let-e>
+            <ng-template #body let-e>
               <tr>
                 <td>
                   <b>{{ e.concept }}</b>
@@ -271,7 +271,7 @@ interface ApiAuditLog {
                 <td style="text-align: right" class="money"><b>Bs {{ e.amount | number:'1.2-2' }}</b></td>
               </tr>
             </ng-template>
-            <ng-template pTemplate="emptymessage">
+            <ng-template #emptymessage>
               <tr>
                 <td colspan="3">
                   <div class="empty-grid-state">
@@ -335,7 +335,7 @@ interface ApiAuditLog {
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} eventos de auditoría"
           styleClass="p-datatable-sm"
         >
-          <ng-template pTemplate="header">
+          <ng-template #header>
             <tr>
               <th>Fecha / Hora</th>
               <th>Acción</th>
@@ -344,7 +344,7 @@ interface ApiAuditLog {
               <th>Detalle de la operación</th>
             </tr>
           </ng-template>
-          <ng-template pTemplate="body" let-a>
+          <ng-template #body let-a>
             <tr>
               <td><small class="mono">{{ a.created_at | date:'short' }}</small></td>
               <td><span class="pill cyan mono">{{ a.action }}</span></td>
@@ -358,7 +358,7 @@ interface ApiAuditLog {
               <td><small class="mono muted">{{ formatAuditMetadata(a) }}</small></td>
             </tr>
           </ng-template>
-          <ng-template pTemplate="emptymessage">
+          <ng-template #emptymessage>
             <tr>
               <td colspan="5">
                 <div class="empty-grid-state">

@@ -113,7 +113,7 @@ import { EVENT_STATUS } from '../../core/models/domain';
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} eventos"
           styleClass="p-datatable-sm"
         >
-          <ng-template pTemplate="header">
+          <ng-template #header>
             <tr>
               <th>Evento</th>
               <th>Slug Tienda</th>
@@ -123,7 +123,7 @@ import { EVENT_STATUS } from '../../core/models/domain';
               <th style="text-align: right">Acción</th>
             </tr>
           </ng-template>
-          <ng-template pTemplate="body" let-e>
+          <ng-template #body let-e>
             <tr>
               <td>
                 <b>{{ e.name }}</b>

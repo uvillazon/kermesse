@@ -146,7 +146,7 @@ interface HomeExpense {
             currentPageReportTemplate="{first}-{last} de {totalRecords} ventas"
             styleClass="p-datatable-sm"
           >
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <tr>
                 <th>Ticket</th>
                 <th>Comprador</th>
@@ -155,7 +155,7 @@ interface HomeExpense {
                 <th>Estado</th>
               </tr>
             </ng-template>
-            <ng-template pTemplate="body" let-s>
+            <ng-template #body let-s>
               <tr>
                 <td>
                   <b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b><br />
@@ -178,7 +178,7 @@ interface HomeExpense {
                 </td>
               </tr>
             </ng-template>
-            <ng-template pTemplate="emptymessage">
+            <ng-template #emptymessage>
               <tr>
                 <td colspan="5">
                   <div class="empty-grid-state">
@@ -209,7 +209,7 @@ interface HomeExpense {
                 <div class="bar"><i [style.width.%]="st.pct"></i></div>
               </div>
             } @empty {
-              <p class="muted">Cargando puestos...</p>
+              <p class="muted">Todavía no hay ventas registradas por puesto.</p>
             }
           </div>
         </section>

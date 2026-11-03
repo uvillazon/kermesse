@@ -115,3 +115,21 @@ describe('Layout sin organización', () => {
     expect(el.querySelector('router-outlet')).toBeNull();
   });
 });
+
+describe('Tablas de PrimeNG', () => {
+  // Con la sintaxis vieja `pTemplate="body"`, PrimeNG 22 no pintaba filas ni cabeceras (ni en el navegador).
+  it('Reportes pinta las filas de gastos que devuelve la API', async () => {
+    TestBed.configureTestingModule({ imports: [ReportsComponent], providers: apiTestProviders() });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(ReportsComponent);
+    fixture.detectChanges();
+    await respondAll(http, { body: { data: [] } }).catch(() => 0);
+    fixture.componentInstance['expenseRows'].set([{ id: 'g1', concept: 'Gasto de prueba visible', category: 'Insumos', amount: 10 }]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Gasto de prueba visible');
+    expect(el.textContent).toContain('Concepto');
+  });
+});
