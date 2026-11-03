@@ -17,3 +17,4 @@ comercial; si `FINANCE_REVIEWER` y `PAYMENT_REVIEWER` se separan; vigencia del a
 
 **Ojo:** la matriz marca `payment.review` como `A` pero `RolePermissionMap` lo concede de base. Mientras no se
 apruebe, manda el código. `ticket.resend` está solo en el documento. Ver [[project-kermesfera]].
+La autorización de los listados GET (2026-11-03) aplica esta matriz; ver [[project-autorizacion-listados-get]].

@@ -22,3 +22,8 @@ cualquier organización. Decisiones del usuario (la matriz v0.3 no las resolvía
 **How to apply:** todo `GET` nuevo debe llamar a `AuthorizationPolicy::decide` antes de consultar; la prueba
 `tests/Event/Infrastructure/Http/ListOrganizationEventsControllerIntegrationTest.php` cubre miembro → 200 y
 ajeno → 403 para todos los listados. Ver [[project-matriz-roles-v03]].
+
+Estado: fusionado en `master` el 2026-11-03 (PR #7, squash). Gotcha al fusionar: una prueba de `master`
+(`ListAuditLogsControllerIntegrationTest`) usaba un actor sin membresía y pasó a dar 403. Toda prueba HTTP
+de un GET necesita membresía de organización y, si es por evento, asignación con el rol o delegación
+(`event_permission_grants`) correspondiente.

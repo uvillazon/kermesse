@@ -27,3 +27,10 @@ caso de fecha ISO de `master`.
 - Endpoint de auditoría organizacional (registros con `event_id` NULL) con permiso de organización.
 - Documentar los GET en `docs/openapi.yaml` (hoy no figuran).
 - `ApiErrorSubscriber` devuelve `request_error` en 403 de `AccessDeniedHttpException` (no `forbidden`).
+
+## Cierre
+- PR #7 fusionado en `master` con squash; rama de trabajo reiniciada desde `master`.
+- Descartado: dar 403 a colaboradores en el listado de eventos (rompía el selector de eventos de operadores) y
+  seguir mostrando auditoría organizacional en el historial del evento (expone cambios de membresía).
+- Siguiente paso: crear `GET /organizations/{id}/audit-logs` con permiso de organización para los registros
+  con `event_id` NULL, y agregar los GET protegidos a `docs/openapi.yaml` con su respuesta 403.

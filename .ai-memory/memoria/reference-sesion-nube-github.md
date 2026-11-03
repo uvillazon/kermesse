@@ -1,6 +1,6 @@
 ---
 name: reference-sesion-nube-github
-description: Gotchas de las sesiones en la nube (permisos de GitHub, push 403, sin base de datos local)
+description: Gotchas de las sesiones en la nube (permisos de GitHub, push 403, cómo montar MariaDB para integración)
 metadata:
   type: reference
 ---
