@@ -371,6 +371,7 @@ export interface ApiTicket {
             </div>
 
             <p-table
+          class="kf-stack"
               [value]="filteredTickets()"
               [paginator]="true"
               [rows]="5"
@@ -393,33 +394,33 @@ export interface ApiTicket {
               </ng-template>
               <ng-template #body let-t>
                 <tr>
-                  <td>
+                  <td data-label="N° Ticket / QR">
                     <b class="mono text-primary">{{ t.ticket_number }}</b>
                     <small class="block muted">{{ t.issued_at | fecha }}</small>
                   </td>
-                  <td>
+                  <td data-label="Comprador">
                     <b>{{ t.buyer_name || 'Venta rápida' }}</b>
                     <small class="block muted">{{ t.buyer_email }}</small>
                   </td>
-                  <td>{{ t.items_summary }}</td>
-                  <td>
+                  <td data-label="Productos acreditados" data-wide>{{ t.items_summary }}</td>
+                  <td data-label="Medio">
                     <span class="pill gray">
                       {{ t.payment_method === 'cash' ? 'Efectivo' : 'QR Banco' }}
                     </span>
                   </td>
-                  <td class="money">Bs {{ t.total | number:'1.2-2' }}</td>
-                  <td style="min-width: 140px;">
+                  <td data-label="Total" class="money">Bs {{ t.total | number:'1.2-2' }}</td>
+                  <td data-label="Progreso de canje" data-wide style="min-width: 140px;">
                     <small>{{ t.redeemed_quantity }} / {{ t.total_quantity }} entregados</small>
                     <div class="bar">
                       <i [style.width.%]="t.total_quantity ? (t.redeemed_quantity / t.total_quantity) * 100 : 0"></i>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     <span [class]="'pill ' + getStatusPillClass(t.status)">
                       {{ getStatusLabel(t.status) }}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="">
                     <p-button
                       size="small"
                       [label]="t.status === 'redeemed' ? 'Ver detalle' : 'Canjear'"
@@ -487,6 +488,7 @@ export interface ApiTicket {
             </div>
 
             <p-table
+          class="kf-stack"
               [value]="filteredCourses()"
               [paginator]="true"
               [rows]="5"
@@ -508,33 +510,33 @@ export interface ApiTicket {
               </ng-template>
               <ng-template #body let-c>
                 <tr>
-                  <td>
+                  <td data-label="Curso / Delegado">
                     <b>{{ c.course }}</b>
                     @if (c.delegate) {
                       <small class="block muted">{{ c.delegate }}</small>
                     }
                   </td>
-                  <td>
+                  <td data-label="Producto y Puesto">
                     <b>{{ c.product || 'Talonario general' }}</b>
                     @if (c.stand) {
                       <small class="block muted">{{ c.stand }}</small>
                     }
                   </td>
-                  <td class="mono">{{ c.assigned || c.tickets }}</td>
-                  <td class="mono"><b>{{ c.delivered }}</b></td>
-                  <td class="mono">{{ c.returned || 0 }}</td>
-                  <td style="min-width: 165px;">
+                  <td data-label="Asignados" class="mono">{{ c.assigned || c.tickets }}</td>
+                  <td data-label="Entregados" class="mono"><b>{{ c.delivered }}</b></td>
+                  <td data-label="Devueltos" class="mono">{{ c.returned || 0 }}</td>
+                  <td data-label="Avance" data-wide style="min-width: 165px;">
                     <small>{{ (((c.delivered + (c.returned || 0)) / (c.assigned || c.tickets)) * 100) | number:'1.0-0' }}% conciliado</small>
                     <div class="bar">
                       <i [style.width.%]="((c.delivered + (c.returned || 0)) / (c.assigned || c.tickets)) * 100"></i>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     <span class="pill" [class.green]="(c.delivered + (c.returned || 0)) >= (c.assigned || c.tickets)" [class.yellow]="(c.delivered + (c.returned || 0)) < (c.assigned || c.tickets)">
                       {{ (c.delivered + (c.returned || 0)) >= (c.assigned || c.tickets) ? 'Conciliado' : (c.remaining ?? ((c.assigned || c.tickets) - c.delivered)) + ' pend.' }}
                     </span>
                   </td>
-                  <td style="text-align: right">
+                  <td data-label="" style="text-align: right">
                     @if (c.id && (c.remaining ?? 0) > 0) {
                       <div class="t-item-actions" style="justify-content: flex-end">
                         <p-button

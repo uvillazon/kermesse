@@ -153,6 +153,7 @@ interface ApiCatalogProduct {
         </div>
 
         <p-table
+          class="kf-stack"
           [value]="filtered()"
           [paginator]="true"
           [rows]="5"
@@ -175,10 +176,10 @@ interface ApiCatalogProduct {
           </ng-template>
           <ng-template #body let-p>
             <tr>
-              <td>
+              <td data-label="Código SKU">
                 <span class="pill gray mono">{{ p.code || (p.id | slice:0:8) }}</span>
               </td>
-              <td>
+              <td data-label="Producto">
                 <div class="prod-cell">
                   <span class="emoji">{{ p.emoji }}</span>
                   <div>
@@ -187,14 +188,14 @@ interface ApiCatalogProduct {
                   </div>
                 </div>
               </td>
-              <td>
+              <td data-label="Puesto">
                 <span class="pill blue">{{ p.standName || standName(p.standId) }}</span>
               </td>
-              <td class="money">Bs {{ p.price | number:'1.2-2' }}</td>
-              <td>
+              <td data-label="Precio Unitario" class="money">Bs {{ p.price | number:'1.2-2' }}</td>
+              <td data-label="Vendidos / Stock">
                 <b>{{ p.sold }}</b> / {{ p.stock }} u.
               </td>
-              <td class="stock">
+              <td data-label="Disponibilidad" class="stock">
                 <div class="stock-top">
                   <small [class.danger-text]="p.stock - p.sold <= 0">
                     {{ p.stock - p.sold <= 0 ? 'Agotado' : (p.stock - p.sold) + ' disponibles' }}
@@ -208,14 +209,14 @@ interface ApiCatalogProduct {
                   ></i>
                 </div>
               </td>
-              <td>
+              <td data-label="Activo">
                 <p-toggleswitch
                   [ngModel]="p.active"
                   (ngModelChange)="toggleActive(p, $event)"
                   [disabled]="ctx.readOnly() || saving()"
                 />
               </td>
-              <td>
+              <td data-label="">
                 <p-button
                   icon="pi pi-pencil"
                   [text]="true"

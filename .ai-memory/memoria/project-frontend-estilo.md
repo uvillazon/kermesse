@@ -32,7 +32,12 @@ El endpoint devuelve `subject_name` (persona afectada) para no mostrar UUID.
 **Celular (≤600/700 px):** la página nunca se desplaza de lado (se midió `scrollWidth` = 390 en todas las pantallas).
 Barra superior: menú, evento, usuario; organización y tienda pública en el menú (`.group.mobile-only`). Cifras en
 2 columnas, botones ≥44 px. Ventas: productos en 2 columnas y `.mobile-action-bar` (global en `styles.scss`) con
-total y "Cobrar". Tickets: lector primero (`order`). Pendiente: tablas → tarjetas en celular.
+total y "Cobrar". Tickets: lector primero (`order`).
+
+**Tablas en celular (≤700 px):** toda `p-table` lleva `class="kf-stack"` en el host y cada `<td>` del cuerpo un
+`data-label` con el texto de su encabezado (`data-label=""` en acciones, `data-wide` para texto largo). El CSS
+en `styles.scss` las muestra como tarjetas. Al crear una tabla nueva, seguir el mismo patrón.
+**Ojo:** PrimeNG 22 ignora `styleClass` en `p-table` (el `p-datatable-sm` existente nunca se aplicó); usar `class`.
 
 **Encabezado de página:** `.page-header` en `styles.scss` sin tarjeta: etiqueta, título 1.4rem, una línea de
 descripción y acciones a la derecha, separados del contenido por una línea.

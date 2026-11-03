@@ -153,7 +153,7 @@ type ApiAuditLog = AuditEntry;
             [rowsPerPageOptions]="[5, 10, 20]"
             [showCurrentPageReport]="true"
             currentPageReportTemplate="{first}-{last} de {totalRecords} productos"
-            styleClass="p-datatable-sm"
+            styleClass="p-datatable-sm" class="kf-stack"
           >
             <ng-template #header>
               <tr>
@@ -165,13 +165,13 @@ type ApiAuditLog = AuditEntry;
             </ng-template>
             <ng-template #body let-p>
               <tr>
-                <td>
+                <td data-label="Producto">
                   <b>{{ p.name }}</b><br />
                   <small class="mono muted">{{ p.code }} &bull; Bs {{ p.unit_price | number:'1.2-2' }}</small>
                 </td>
-                <td><span class="pill blue">{{ p.stand_name }}</span></td>
-                <td style="text-align: right" class="mono">{{ p.sold }}</td>
-                <td style="text-align: right" class="money"><b>Bs {{ p.unit_price * p.sold | number:'1.2-2' }}</b></td>
+                <td data-label="Puesto"><span class="pill blue">{{ p.stand_name }}</span></td>
+                <td data-label="Unidades" style="text-align: right" class="mono">{{ p.sold }}</td>
+                <td data-label="Ingreso" style="text-align: right" class="money"><b>Bs {{ p.unit_price * p.sold | number:'1.2-2' }}</b></td>
               </tr>
             </ng-template>
             <ng-template #emptymessage>
@@ -241,7 +241,7 @@ type ApiAuditLog = AuditEntry;
             [rowsPerPageOptions]="[5, 10]"
             [showCurrentPageReport]="true"
             currentPageReportTemplate="{first}-{last} de {totalRecords} gastos"
-            styleClass="p-datatable-sm"
+            styleClass="p-datatable-sm" class="kf-stack"
           >
             <ng-template #header>
               <tr>
@@ -252,14 +252,14 @@ type ApiAuditLog = AuditEntry;
             </ng-template>
             <ng-template #body let-e>
               <tr>
-                <td>
+                <td data-label="Concepto">
                   <b>{{ e.concept }}</b>
                   @if (e.recorded_by_name) {
                     <br /><small class="muted">Reg. por {{ e.recorded_by_name }}</small>
                   }
                 </td>
-                <td><span class="pill gray">{{ e.category }}</span></td>
-                <td style="text-align: right" class="money"><b>Bs {{ e.amount | number:'1.2-2' }}</b></td>
+                <td data-label="Categoría"><span class="pill gray">{{ e.category }}</span></td>
+                <td data-label="Monto" style="text-align: right" class="money"><b>Bs {{ e.amount | number:'1.2-2' }}</b></td>
               </tr>
             </ng-template>
             <ng-template #emptymessage>
@@ -324,7 +324,7 @@ type ApiAuditLog = AuditEntry;
           [rowsPerPageOptions]="[10, 25, 50]"
           [showCurrentPageReport]="true"
           currentPageReportTemplate="{first}-{last} de {totalRecords} cambios"
-          styleClass="p-datatable-sm"
+          styleClass="p-datatable-sm" class="kf-stack"
         >
           <ng-template #header>
             <tr>
@@ -336,15 +336,15 @@ type ApiAuditLog = AuditEntry;
           </ng-template>
           <ng-template #body let-a>
             <tr>
-              <td><small class="audit-when">{{ a.created_at | fecha }}</small></td>
-              <td><b>{{ a.actor_name }}</b></td>
-              <td>
+              <td data-label="Cuándo"><small class="audit-when">{{ a.created_at | fecha }}</small></td>
+              <td data-label="Quién"><b>{{ a.actor_name }}</b></td>
+              <td data-label="Qué pasó" data-wide>
                 <span class="audit-what">{{ a.desc.title }}</span>
                 @if (a.desc.detail) {
                   <small class="muted audit-detail">{{ a.desc.detail }}</small>
                 }
               </td>
-              <td><span class="pill gray">{{ a.area }}</span></td>
+              <td data-label="Área"><span class="pill gray">{{ a.area }}</span></td>
             </tr>
           </ng-template>
           <ng-template #emptymessage>

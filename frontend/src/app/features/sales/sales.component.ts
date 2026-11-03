@@ -344,7 +344,7 @@ interface ApiSale {
               [rowsPerPageOptions]="[5, 10, 20]"
               [showCurrentPageReport]="true"
               currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pagos por verificar"
-              styleClass="p-datatable-sm"
+              styleClass="p-datatable-sm" class="kf-stack"
             >
               <ng-template #header>
                 <tr>
@@ -360,17 +360,17 @@ interface ApiSale {
               </ng-template>
               <ng-template #body let-s>
                 <tr>
-                  <td><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
-                  <td>{{ s.created_at | fecha }}</td>
-                  <td>
+                  <td data-label="Ticket"><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
+                  <td data-label="Fecha / Hora">{{ s.created_at | fecha }}</td>
+                  <td data-label="Comprador">
                     <b>{{ s.buyer_name || 'Comprador' }}</b><br />
                     <small class="muted">{{ s.buyer_email }}</small>
                   </td>
-                  <td>{{ describeItems(s) }}</td>
-                  <td>{{ s.operator_name }}</td>
-                  <td style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
-                  <td><span class="pill yellow">Por verificar</span></td>
-                  <td style="text-align: right">
+                  <td data-label="Detalle de productos" data-wide>{{ describeItems(s) }}</td>
+                  <td data-label="Operador">{{ s.operator_name }}</td>
+                  <td data-label="Monto QR" style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
+                  <td data-label="Estado"><span class="pill yellow">Por verificar</span></td>
+                  <td data-label="" style="text-align: right">
                     <div class="row-actions">
                       <p-button
                         size="small"
@@ -471,7 +471,7 @@ interface ApiSale {
               [rowsPerPageOptions]="[5, 10, 25, 50]"
               [showCurrentPageReport]="true"
               currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} ventas"
-              styleClass="p-datatable-sm"
+              styleClass="p-datatable-sm" class="kf-stack"
             >
               <ng-template #header>
                 <tr>
@@ -487,21 +487,21 @@ interface ApiSale {
               </ng-template>
               <ng-template #body let-s>
                 <tr>
-                  <td><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
-                  <td>{{ s.created_at | fecha }}</td>
-                  <td>
+                  <td data-label="Ticket"><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
+                  <td data-label="Fecha / Hora">{{ s.created_at | fecha }}</td>
+                  <td data-label="Comprador">
                     <b>{{ s.buyer_name || 'Comprador' }}</b><br />
                     <small class="muted">{{ s.buyer_email }}</small>
                   </td>
-                  <td><small>{{ describeItems(s) }}</small></td>
-                  <td>{{ s.operator_name }}</td>
-                  <td>
+                  <td data-label="Productos" data-wide><small>{{ describeItems(s) }}</small></td>
+                  <td data-label="Operador">{{ s.operator_name }}</td>
+                  <td data-label="Medio">
                     <span class="pill" [class.blue]="s.payment.method === 'cash'" [class.cyan]="s.payment.method !== 'cash'">
                       {{ s.payment.method === 'cash' ? 'Efectivo' : 'QR / Transf.' }}
                     </span>
                   </td>
-                  <td style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
-                  <td>
+                  <td data-label="Total" style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
+                  <td data-label="Estado">
                     <span class="pill" [class.green]="s.status === 'confirmed'" [class.yellow]="s.status === 'pending_payment'">
                       {{ s.status === 'confirmed' ? 'Confirmado' : 'Pendiente' }}
                     </span>

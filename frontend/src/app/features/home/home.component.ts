@@ -145,7 +145,7 @@ interface HomeExpense {
             [rowsPerPageOptions]="[5, 10]"
             [showCurrentPageReport]="true"
             currentPageReportTemplate="{first}-{last} de {totalRecords} ventas"
-            styleClass="p-datatable-sm"
+            styleClass="p-datatable-sm" class="kf-stack"
           >
             <ng-template #header>
               <tr>
@@ -158,21 +158,21 @@ interface HomeExpense {
             </ng-template>
             <ng-template #body let-s>
               <tr>
-                <td>
+                <td data-label="Ticket">
                   <b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b><br />
                   <small class="muted">{{ s.created_at | fecha:'HH:mm' }} &bull; {{ s.operator_name }}</small>
                 </td>
-                <td>
+                <td data-label="Comprador">
                   <b>{{ s.buyer_name || 'Comprador' }}</b><br />
                   <small class="muted">{{ s.buyer_email }}</small>
                 </td>
-                <td>
+                <td data-label="Medio">
                   <span class="pill" [class.blue]="s.payment.method === 'cash'" [class.cyan]="s.payment.method !== 'cash'">
                     {{ s.payment.method === 'cash' ? 'Efectivo' : 'QR Banco' }}
                   </span>
                 </td>
-                <td style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
-                <td>
+                <td data-label="Total" style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
+                <td data-label="Estado">
                   <span class="pill" [class.green]="s.status === 'confirmed'" [class.yellow]="s.status === 'pending_payment'" [class.red]="s.status === 'cancelled'">
                     {{ s.status === 'confirmed' ? 'Confirmado' : (s.status === 'pending_payment' ? 'Por verificar' : 'Anulado') }}
                   </span>

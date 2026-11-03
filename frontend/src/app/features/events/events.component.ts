@@ -112,7 +112,7 @@ import { FechaPipe } from '../../core/ui/fecha.pipe';
           [rowsPerPageOptions]="[5, 10, 20]"
           [showCurrentPageReport]="true"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} eventos"
-          styleClass="p-datatable-sm"
+          styleClass="p-datatable-sm" class="kf-stack"
         >
           <ng-template #header>
             <tr>
@@ -126,21 +126,21 @@ import { FechaPipe } from '../../core/ui/fecha.pipe';
           </ng-template>
           <ng-template #body let-e>
             <tr>
-              <td>
+              <td data-label="Evento">
                 <b>{{ e.name }}</b>
                 @if (e.id === ctx.active()?.id) {
                   <span class="pill cyan" style="margin-left: .4rem">Actual</span>
                 }
               </td>
-              <td class="mono muted">/tienda/{{ e.slug }}</td>
-              <td>{{ (e.starts_at | fecha:'d MMM y') || 'Sin fecha' }}</td>
-              <td>{{ e.stands }} puestos</td>
-              <td>
+              <td data-label="Enlace de la tienda" class="mono muted">/tienda/{{ e.slug }}</td>
+              <td data-label="Fecha">{{ (e.starts_at | fecha:'d MMM y') || 'Sin fecha' }}</td>
+              <td data-label="Puestos">{{ e.stands }} puestos</td>
+              <td data-label="Estado">
                 <span [class]="'pill ' + (status[e.status]?.css || 'gray')">
                   {{ status[e.status]?.label || e.status }}
                 </span>
               </td>
-              <td style="text-align: right">
+              <td data-label="" style="text-align: right">
                 <p-button size="small" label="Seleccionar" icon="pi pi-check" [outlined]="e.id !== ctx.active()?.id" (onClick)="open(e.id)" />
               </td>
             </tr>

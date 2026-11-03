@@ -505,3 +505,59 @@ a { color: inherit; text-decoration: none; }
 @media (min-width: 701px) {
   .mobile-action-bar { display: none; }
 }
+
+/* ---------- Tablas como tarjetas en celular ----------
+   Toda p-table con styleClass "kf-stack" y celdas con data-label se ve como una lista de tarjetas:
+   la primera celda es el título, el resto son pares etiqueta/valor en dos columnas.
+   data-wide ocupa todo el ancho; data-label="" (acciones) va al final sin etiqueta. */
+@media (max-width: 700px) {
+  .kf-stack {
+    .p-datatable-thead { display: none; }
+    .p-datatable-table-container { overflow: visible !important; }
+    .p-datatable-table { width: 100%; min-width: 0 !important; table-layout: auto; }
+
+    .p-datatable-tbody > tr {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem 1rem;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--kf-line);
+    }
+
+    .p-datatable-tbody > tr > td {
+      display: block;
+      min-width: 0;
+      padding: 0 !important;
+      border: 0 !important;
+      text-align: left !important;
+      overflow-wrap: anywhere;
+    }
+
+    td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.15rem;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--kf-muted);
+    }
+
+    td:first-child,
+    td[data-wide],
+    td[data-label=''],
+    td:not([data-label]) {
+      grid-column: 1 / -1;
+    }
+
+    /* Primero los datos cortos de a pares, luego las celdas anchas y al final las acciones. */
+    td[data-wide] { order: 1; }
+    td[data-label=''] { order: 2; }
+    td:first-child { font-size: 0.95rem; order: 0; }
+    td:first-child::before,
+    td[data-label='']::before { display: none; }
+    td[data-label=''] { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    td .mono { white-space: normal; }
+  }
+}

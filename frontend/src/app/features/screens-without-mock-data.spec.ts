@@ -131,6 +131,13 @@ describe('Tablas de PrimeNG', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Gasto de prueba visible');
     expect(el.textContent).toContain('Concepto');
+
+    // Modo tarjeta en celular: la tabla lleva la clase en el host (PrimeNG 22 ignora styleClass)
+    // y cada celda su etiqueta.
+    const row = [...el.querySelectorAll('p-table.kf-stack tbody tr')].find((tr) => tr.textContent?.includes('Gasto de prueba visible'));
+    expect(row).toBeTruthy();
+    const labels = [...(row as HTMLElement).querySelectorAll('td')].map((td) => td.getAttribute('data-label'));
+    expect(labels).toEqual(['Concepto', 'Categoría', 'Monto']);
   });
 });
 

@@ -113,7 +113,7 @@ const ORG_ACCESS: Record<string, string> = {
           [rowsPerPageOptions]="[5, 10, 20]"
           [showCurrentPageReport]="true"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} miembros"
-          styleClass="p-datatable-sm"
+          styleClass="p-datatable-sm" class="kf-stack"
         >
           <ng-template #header>
             <tr>
@@ -126,7 +126,7 @@ const ORG_ACCESS: Record<string, string> = {
           </ng-template>
           <ng-template #body let-m>
             <tr>
-              <td>
+              <td data-label="Persona">
                 <div class="user-cell">
                   <span class="av">{{ initials(m.name) }}</span>
                   <div class="who">
@@ -135,10 +135,10 @@ const ORG_ACCESS: Record<string, string> = {
                   </div>
                 </div>
               </td>
-              <td>
+              <td data-label="Acceso organizacional">
                 <span class="pill blue">{{ getOrgAccessLabel(m.orgAccess) }}</span>
               </td>
-              <td>
+              <td data-label="Roles en el evento" data-wide>
                 <div class="roles">
                   @for (r of m.roles; track r) {
                     <span class="pill gray">{{ getRoleLabel(r) }}</span>
@@ -147,12 +147,12 @@ const ORG_ACCESS: Record<string, string> = {
                   }
                 </div>
               </td>
-              <td>
+              <td data-label="Estado">
                 <span [class]="'pill ' + (m.status === 'active' ? 'green' : 'red')">
                   {{ m.status === 'active' ? 'Activo' : 'Suspendido' }}
                 </span>
               </td>
-              <td style="text-align: right">
+              <td data-label="" style="text-align: right">
                 <p-button
                   label="Roles"
                   icon="pi pi-cog"
@@ -227,7 +227,7 @@ const ORG_ACCESS: Record<string, string> = {
             [rowsPerPageOptions]="[5, 10]"
             [showCurrentPageReport]="true"
             currentPageReportTemplate="{first}-{last} de {totalRecords}"
-            styleClass="p-datatable-sm"
+            styleClass="p-datatable-sm" class="kf-stack"
           >
             <ng-template #header>
               <tr>
@@ -238,20 +238,20 @@ const ORG_ACCESS: Record<string, string> = {
             </ng-template>
             <ng-template #body let-i>
               <tr>
-                <td>
+                <td data-label="Correo invitado">
                   <div class="who">
                     <b>{{ i.email }}</b>
                     <small class="muted">Vence el {{ i.expires_at | fecha:"d 'de' MMM, HH:mm" }}</small>
                   </div>
                 </td>
-                <td>
+                <td data-label="Roles propuestos" data-wide>
                   <div class="roles">
                     @for (r of i.roles; track r) {
                       <span class="pill gray">{{ getRoleLabel(r) }}</span>
                     }
                   </div>
                 </td>
-                <td>
+                <td data-label="Estado">
                   <span [class]="'pill ' + (i.status === 'pending' ? 'yellow' : (i.status === 'accepted' ? 'green' : 'red'))">
                     {{ i.status === 'pending' ? 'Pendiente' : (i.status === 'accepted' ? 'Aceptada' : 'Vencida') }}
                   </span>
