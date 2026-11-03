@@ -19,7 +19,7 @@ No incluyas secretos, tokens, credenciales, datos personales ni logs completos.
 Toda la memoria vive DENTRO de este proyecto. No se usa Claude-Mem ni servicios externos.
 
 - **Nivel 0 — este `CLAUDE.md`** (se carga solo): stack, comandos y reglas permanentes.
-- **Nivel 1 — memoria local**: `D:\ProyectosPhp\kermesse\.ai-memory\memoria\`. `MEMORY.md` es el índice
+- **Nivel 1 — memoria local**: `.ai-memory/memoria/`. `MEMORY.md` es el índice
   (una línea por archivo); un hecho por archivo con frontmatter `name`, `description`, `metadata.type`
   (`user|feedback|project|reference`). Guardar el **porqué**, enlazar con `[[nombre]]`.
 - **Nivel 2 — bitácoras**: `docs/bitacoras/YYYY-MM-DD-<tema>.md`, una por sesión, versionadas. No se
@@ -34,5 +34,5 @@ Reglas:
 - No guardar: estructura de código, lo que dice el git log, credenciales, ni detalles que solo importan
   en esa conversación.
 - Al cerrar: correr `/cierre`. Nunca volcar el chat entero. Para retomar: `/contexto <tema>`.
-- Abrir Claude siempre desde `D:\ProyectosPhp\kermesse`.
+- Abrir Claude siempre desde la raíz del repo (local: `D:\ProyectosPhp\kermesse`; nube: `/home/user/kermesse`). Las rutas de memoria son relativas a esa raíz.
 - Las credenciales viven en un archivo no versionado (`.env.local`) y nunca se copian a memoria ni a bitácoras.

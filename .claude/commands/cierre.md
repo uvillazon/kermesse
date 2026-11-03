@@ -4,8 +4,8 @@ description: Cierra la sesión KERMESEFERA — vuelca decisiones a memoria y esc
 
 Cerrá la sesión de trabajo KERMESEFERA. Ejecutá los pasos en orden y no te saltes ninguno.
 
-Memoria local (nivel 1) = `D:\ProyectosPhp\kermesse\.ai-memory\memoria\`
-Bitácoras (nivel 2) = `D:\ProyectosPhp\kermesse\docs\bitacoras\`
+Memoria local (nivel 1) = `.ai-memory/memoria/`
+Bitácoras (nivel 2) = `docs/bitacoras/`
 
 ## 1. Repasar la sesión
 

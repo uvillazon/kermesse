@@ -9,7 +9,7 @@ Recuperá el contexto necesario **antes** de proponer nada. En orden, parando ap
 
 ## 1. Memoria local
 
-Leé `D:\ProyectosPhp\kermesse\.ai-memory\memoria\MEMORY.md` y abrí los archivos cuya línea toque el
+Leé `.ai-memory/memoria/MEMORY.md` y abrí los archivos cuya línea toque el
 tema. Si eso ya responde qué se decidió y dónde quedó, no sigas.
 
 ## 2. Bitácoras (solo si lo anterior no alcanzó)
