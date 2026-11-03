@@ -3,15 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { KEvent } from '../models/domain';
 import { describeLoadError } from './load-error';
-
-export const CURRENT_ORG_ID = '11111111-1111-4111-8111-111111111111';
+import { AuthOrganization, AuthService } from './auth.service';
 
 export type LoadState = 'loading' | 'ready' | 'error';
 
 @Injectable({ providedIn: 'root' })
 export class EventContextService {
   private readonly http = inject(HttpClient);
-  readonly orgId = CURRENT_ORG_ID;
+  private readonly auth = inject(AuthService);
+
+  /** Organización activa, tomada del login. `null` si el usuario no pertenece a ninguna vigente. */
+  readonly organization = computed<AuthOrganization | null>(() => this.auth.activeOrganization());
+  private readonly organizationId = computed(() => this.organization()?.id ?? null);
 
   private readonly events = signal<KEvent[]>([]);
   private readonly activeId = signal<string | null>(null);
@@ -30,16 +33,44 @@ export class EventContextService {
   readonly readOnly = computed(() => this.active()?.status === 'closed');
 
   constructor() {
-    this.refreshEvents();
+    // Carga los eventos al iniciar y cada vez que cambia la organización activa.
+    effect(() => {
+      const orgId = this.organizationId();
+      untracked(() => {
+        this.events.set([]);
+        this.activeId.set(null);
+        if (orgId) {
+          this.refreshEvents();
+        } else {
+          this.errorSignal.set(null);
+          this.stateSignal.set('ready');
+        }
+      });
+    });
+  }
+
+  /** Id de la organización activa para construir URLs. Las pantallas solo se muestran si hay una. */
+  get orgId(): string {
+    const org = this.organization();
+    if (!org) {
+      throw new Error('El usuario no pertenece a ninguna organización activa.');
+    }
+    return org.id;
   }
 
   async refreshEvents(): Promise<void> {
+    const orgId = this.organizationId();
+    if (!orgId) {
+      return;
+    }
     this.stateSignal.set('loading');
     this.errorSignal.set(null);
     try {
       const res = await firstValueFrom(
-        this.http.get<{ data: KEvent[] }>(`/api/v1/organizations/${this.orgId}/events`)
+        this.http.get<{ data: KEvent[] }>(`/api/v1/organizations/${orgId}/events`)
       );
+      // Si el usuario cambió de organización mientras tanto, esta respuesta ya no vale.
+      if (this.organizationId() !== orgId) return;
       const list = res?.data ?? [];
       this.events.set(list);
       if (!list.some((e) => e.id === this.activeId())) {
@@ -47,6 +78,7 @@ export class EventContextService {
       }
       this.stateSignal.set('ready');
     } catch (err) {
+      if (this.organizationId() !== orgId) return;
       this.events.set([]);
       this.activeId.set(null);
       this.errorSignal.set(describeLoadError(err, 'No se pudieron cargar los eventos de la organización.'));

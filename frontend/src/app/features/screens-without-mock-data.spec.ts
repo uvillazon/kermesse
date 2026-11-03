@@ -99,3 +99,19 @@ describe('Layout sin eventos', () => {
     }
   });
 });
+
+describe('Layout sin organización', () => {
+  it('si el usuario no pertenece a ninguna organización lo dice en vez de mostrar pantallas', async () => {
+    const ctx = fakeEventContext(null);
+    ctx.organization.set(null);
+    TestBed.configureTestingModule({ imports: [LayoutComponent], providers: apiTestProviders(ctx) });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(LayoutComponent);
+    fixture.detectChanges();
+    await respondAll(http);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('no pertenece a ninguna organización activa');
+    expect(el.querySelector('router-outlet')).toBeNull();
+  });
+});

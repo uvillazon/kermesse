@@ -19,6 +19,26 @@ import { EVENT_STATUS } from '../../models/domain';
           <span class="logo"><i class="pi pi-globe"></i></span>
           <span class="brand-name">Kermes<b>fera</b></span>
         </a>
+        @if (ctx.organization(); as org) {
+          <span class="divider"></span>
+          <span class="org">
+            <span class="org-badge">{{ initials(org.name) }}</span>
+            @if (auth.organizations().length > 1) {
+              <select
+                class="org-select"
+                [ngModel]="org.id"
+                (ngModelChange)="auth.selectOrganization($event)"
+                aria-label="Organización activa"
+              >
+                @for (o of auth.organizations(); track o.id) {
+                  <option [value]="o.id">{{ o.name }}</option>
+                }
+              </select>
+            } @else {
+              <span class="org-name">{{ org.name }}</span>
+            }
+          </span>
+        }
       </div>
 
       <div class="center">
@@ -62,7 +82,7 @@ import { EVENT_STATUS } from '../../models/domain';
             <span class="avatar">{{ user.avatarInitials }}</span>
             <span class="user">
               <b>{{ user.name }}</b>
-              <small>{{ getOrgAccessLabel(user.orgAccess) }}</small>
+              <small>{{ getOrgAccessLabel(ctx.organization()?.access ?? user.orgAccess) }}</small>
             </span>
             <button
               class="icon-btn logout-btn"
@@ -149,6 +169,16 @@ import { EVENT_STATUS } from '../../models/domain';
       align-items: center;
       gap: 0.5rem;
       font-size: 0.85rem;
+    }
+    .org-select {
+      font: inherit;
+      font-weight: 600;
+      border: 1px solid var(--kf-line);
+      border-radius: 8px;
+      padding: 0.25rem 0.5rem;
+      background: transparent;
+      color: inherit;
+      max-width: 220px;
     }
 
     .org-badge {
@@ -277,6 +307,16 @@ export class TopbarComponent {
   protected readonly ctx = inject(EventContextService);
   protected readonly auth = inject(AuthService);
   protected readonly status: Record<string, { label: string; css: string } | undefined> = EVENT_STATUS;
+
+  initials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter((w) => /^[\p{L}\p{N}]/u.test(w))
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  }
 
   getOrgAccessLabel(type: 'owner' | 'administrator' | 'collaborator'): string {
     switch (type) {

@@ -23,8 +23,15 @@ lenta del evento anterior pisaba la del nuevo. Ventas descarta el carrito al cam
 `features/screens-event-switch.spec.ts` (el evento viejo responde *después* del nuevo; es el caso que fallaba).
 Convención: toda pantalla nueva con datos por evento debe cargar con `onActiveEventChange` + `isStale`.
 
+**Corregido — organización desde el login:** `POST /auth/login` devuelve `user.organizations`
+(`id, name, slug, access`): membresías `active`, organización `active`, vigencia como
+`OrganizationMembership::isActiveAt()`, ordenadas por nombre. `orgAccess` se mantiene (acceso en la primera).
+En Angular, `AuthService.activeOrganization()` = la elegida (guardada en `localStorage`, solo como preferencia)
+si sigue en la lista, si no la primera. `EventContextService.orgId` sale de ahí y recarga eventos al cambiar de
+organización (descarta respuestas tardías). Sin organización: aviso en el layout, sin pantallas. Selector en la
+barra superior solo si hay más de una. Las sesiones guardadas sin `organizations` obligan a volver a entrar.
+
 **Pendiente:**
-- `CURRENT_ORG_ID` fijo en `event-context.service.ts`; el login no devuelve organización.
 - Sin control de UI por rol: cualquier usuario autenticado ve todos los menús y botones.
 - Backend: `ListOrganizationEventsController` devuelve `'28 oct 2026'` si el evento no tiene `starts_at`.
 - `ApiService` sin uso; `environment.prod.ts` apunta a `127.0.0.1:8000`; el login enlaza a `/tienda/halloween-2026`.

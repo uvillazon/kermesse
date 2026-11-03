@@ -33,6 +33,12 @@ export function fakeEventContext(event: KEvent | null = TEST_EVENT) {
   const activeEventId = computed(() => active()?.id ?? null);
   return {
     orgId: 'org-test',
+    organization: signal<{ id: string; name: string; slug: string; access: string } | null>({
+      id: 'org-test',
+      name: 'Organización de prueba',
+      slug: 'org-prueba',
+      access: 'owner',
+    }),
     active,
     activeEventId,
     isStale: (eventId: string) => activeEventId() !== eventId,

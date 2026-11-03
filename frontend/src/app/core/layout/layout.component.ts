@@ -21,29 +21,36 @@ import { EventContextService } from '../services/event-context.service';
           </div>
         }
 
-        @switch (ctx.state()) {
-          @case ('loading') {
-            <div class="notice info" role="status">
-              <i class="pi pi-spin pi-spinner"></i>
-              <span>Cargando eventos de la organización…</span>
-            </div>
-          }
-          @case ('error') {
-            <div class="notice danger" role="alert">
-              <i class="pi pi-exclamation-triangle"></i>
-              <span>{{ ctx.error() }}</span>
-              <button type="button" class="retry" (click)="ctx.refreshEvents()">Reintentar</button>
-            </div>
-          }
-          @default {
-            @if (ctx.active() || onEventsPage()) {
-              <router-outlet />
-            } @else {
-              <div class="notice info empty" role="status">
-                <i class="pi pi-calendar-plus"></i>
-                <span>La organización todavía no tiene eventos. Crea el primero para empezar.</span>
-                <a routerLink="/events">Ir a Eventos</a>
+        @if (!ctx.organization()) {
+          <div class="notice warn" role="status">
+            <i class="pi pi-building"></i>
+            <span>Tu usuario no pertenece a ninguna organización activa. Pide a la persona responsable que te invite.</span>
+          </div>
+        } @else {
+          @switch (ctx.state()) {
+            @case ('loading') {
+              <div class="notice info" role="status">
+                <i class="pi pi-spin pi-spinner"></i>
+                <span>Cargando eventos de la organización…</span>
               </div>
+            }
+            @case ('error') {
+              <div class="notice danger" role="alert">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ ctx.error() }}</span>
+                <button type="button" class="retry" (click)="ctx.refreshEvents()">Reintentar</button>
+              </div>
+            }
+            @default {
+              @if (ctx.active() || onEventsPage()) {
+                <router-outlet />
+              } @else {
+                <div class="notice info empty" role="status">
+                  <i class="pi pi-calendar-plus"></i>
+                  <span>La organización todavía no tiene eventos. Crea el primero para empezar.</span>
+                  <a routerLink="/events">Ir a Eventos</a>
+                </div>
+              }
             }
           }
         }
