@@ -17,4 +17,4 @@ hasta definir quién autoriza el cierre.
 `hitos.md`; no leer `docs/` completo. Relacionado: [[feedback-sin-claude-mem]].
 Estado al 2026-11-03 (tras PR #4 y #5): ventas efectivo/QR, tickets, catálogo, gastos y tienda pública
 implementados y conectados al frontend sin datos de ejemplo. Suite backend 88/88 en verde contra MariaDB;
-frontend 65 tests. Ver [[project-frontend-auditoria]], [[project-frontend-estilo]] y [[project-seguridad-pendiente]].
+frontend 65 tests. Ver [[project-frontend-auditoria]], [[project-frontend-estilo]] [[project-contrasenas-login]] y [[project-autorizacion-listados-get]].

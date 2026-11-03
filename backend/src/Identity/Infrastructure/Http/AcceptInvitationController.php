@@ -29,10 +29,11 @@ final readonly class AcceptInvitationController
     )]
     public function __invoke(Request $request): JsonResponse
     {
-        $payload = $this->input->object($request, ['token', 'email', 'display_name']);
+        $payload = $this->input->object($request, ['token', 'email', 'display_name', 'password']);
         $token = $this->input->requiredString($payload, 'token');
         $email = strtolower($this->input->requiredString($payload, 'email'));
         $displayName = $this->input->requiredString($payload, 'display_name');
+        $password = $this->input->password($payload, 'password', required: false);
 
         if (43 !== strlen($token) || 1 !== preg_match('/^[A-Za-z0-9_-]{43}$/D', $token)) {
             throw new UnprocessableEntityHttpException('Invitation is invalid, expired or already consumed.');
@@ -53,6 +54,7 @@ final readonly class AcceptInvitationController
             $this->identifiers->generate(),
             $this->identifiers->generate(),
             new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            password: $password,
         ));
 
         return new JsonResponse(['data' => [

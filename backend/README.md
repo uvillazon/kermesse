@@ -22,7 +22,7 @@ Health: `GET http://127.0.0.1:8000/api/v1/health`
 
 Escrituras protegidas disponibles: asignar, cambiar roles y revocar acceso de evento; revocar acceso organizacional; transferir propietario mediante `POST /organizations/{organizationId}/ownership-transfers`; y crear invitaciones. Requieren identidad autenticada en el contexto interno, las reglas de autorización del comando, contrato `docs/openapi.yaml` e `Idempotency-Key`. `POST /invitations/accept` es público y consume un token de invitación de un solo uso sin almacenarlo en texto plano.
 
-La autenticación usa JWT HS256 con `sub` UUID, `iss`, `aud`, `iat` y `exp`. Firma, emisor, audiencia, tolerancia de reloj y duración máxima se configuran mediante `AUTH_TOKEN_*`; el secreto real debe vivir en `.env.local` o un gestor de secretos. El backend valida tokens, pero la emisión/login quedará en el proveedor de identidad que se elija.
+La autenticación usa JWT HS256 con `sub` UUID, `iss`, `aud`, `iat` y `exp`. Firma, emisor, audiencia, tolerancia de reloj y duración máxima se configuran mediante `AUTH_TOKEN_*`; el secreto real debe vivir en `.env.local` o un gestor de secretos. `POST /api/v1/auth/login` emite el token tras verificar el hash de contraseña guardado en `users.password_hash`. Las contraseñas se definen al aceptar una invitación o, para usuarios de desarrollo, con `bin/console app:users:set-password <correo>` (pide la contraseña oculta; en scripts usar `--from-env=NOMBRE_VARIABLE`). Nunca se pasan como argumento ni se versionan.
 
 ## Base de datos local
 

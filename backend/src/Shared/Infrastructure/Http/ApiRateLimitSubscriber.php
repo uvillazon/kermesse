@@ -41,7 +41,7 @@ final readonly class ApiRateLimitSubscriber
         $decision = $this->limiter->consume(
             $action,
             $subject,
-            $this->policy->defaultPerMinute(),
+            $this->policy->perMinuteFor(is_string($route) ? $route : null),
             new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
         );
 

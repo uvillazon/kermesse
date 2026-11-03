@@ -1,3 +1,7 @@
+parameters:
+  # Valor por defecto para instalaciones cuyo .env.local aún no define la cuota de login.
+  env(RATE_LIMIT_LOGIN_PER_MINUTE): '10'
+
 services:
   _defaults:
     autowire: true
@@ -18,6 +22,7 @@ services:
     arguments:
       $enabled: '%env(bool:RATE_LIMIT_ENABLED)%'
       $defaultPerMinute: '%env(int:RATE_LIMIT_DEFAULT_PER_MINUTE)%'
+      $loginPerMinute: '%env(int:RATE_LIMIT_LOGIN_PER_MINUTE)%'
 
   App\Identity\Application\Access\AccessDirectory:
     alias: App\Identity\Infrastructure\Doctrine\DoctrineAccessDirectory
@@ -36,6 +41,12 @@ services:
 
   App\Identity\Application\Access\OrganizationOwnershipWriter:
     alias: App\Identity\Infrastructure\Doctrine\DoctrineOrganizationOwnershipWriter
+
+  App\Identity\Application\Credential\PasswordHasher:
+    alias: App\Identity\Infrastructure\Security\NativePasswordHasher
+
+  App\Identity\Application\Credential\UserCredentialRepository:
+    alias: App\Identity\Infrastructure\Doctrine\DoctrineUserCredentialRepository
 
   App\Identity\Application\Invitation\InvitationTokenGenerator:
     alias: App\Identity\Infrastructure\Security\SecureInvitationTokenGenerator

@@ -16,6 +16,8 @@ final readonly class AcceptInvitationCommand
         public string $auditLogId,
         public \DateTimeImmutable $occurredAt,
         public ?string $requestId = null,
+        // Obligatoria cuando la invitación crea la cuenta o la cuenta aún no tiene contraseña.
+        #[\SensitiveParameter] public ?string $password = null,
     ) {
     }
 }

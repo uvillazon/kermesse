@@ -43,6 +43,25 @@ final class ApiRequestInput
         return trim($value);
     }
 
+    /**
+     * Lee una contraseña tal cual llegó: a diferencia de requiredString() no recorta espacios,
+     * porque forman parte del secreto.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function password(array $payload, string $field, bool $required = true): ?string
+    {
+        $value = $payload[$field] ?? null;
+        if (null === $value && !$required) {
+            return null;
+        }
+        if (!is_string($value) || '' === $value) {
+            throw new UnprocessableEntityHttpException($field.' is required.');
+        }
+
+        return $value;
+    }
+
     /** @param array<string, mixed> $payload */
     public function optionalString(array $payload, string $field, int $maximumLength): ?string
     {
