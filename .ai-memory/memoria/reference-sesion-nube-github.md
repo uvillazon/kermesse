@@ -1,6 +1,6 @@
 ---
 name: reference-sesion-nube-github
-description: Gotchas de las sesiones en la nube (permisos de GitHub, push 403, sin base de datos local)
+description: Gotchas de las sesiones en la nube (permisos de GitHub, push 403, cómo montar MariaDB para integración)
 metadata:
   type: reference
 ---
@@ -25,6 +25,8 @@ Aprendido el 2026-11-03 trabajando desde Claude Code en la nube (`/home/user/ker
      (no `composer test`: falla como root). Para levantar la app (capturas), `COMPOSER_ALLOW_SUPERUSER=1
      composer install` genera `vendor/autoload_runtime.php`, y un `backend/.env` local (ignorado por git).
   5. Arrancar el kernel regenera `backend/config/reference.php`: `git checkout` antes de commitear.
+  Si a mitad de sesión aparece `Connection refused`, el servidor se detuvo: comprobar con `mysqladmin ping`
+  y volver a arrancarlo (pasó el 2026-11-03).
   Las credenciales reales nunca se versionan; las de la base desechable no salen del contenedor.
 
 **Why:** perdimos varios intentos por tratar el 403 como error de red o de cuenta. **How to apply:** ante un 403,
