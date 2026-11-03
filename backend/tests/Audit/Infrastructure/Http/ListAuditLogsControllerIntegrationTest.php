@@ -19,6 +19,9 @@ final class ListAuditLogsControllerIntegrationTest extends WebTestCase
     private const TARGET_ID = 'f1000000-0000-4000-8000-000000000002';
     private const ORGANIZATION_ID = 'f2000000-0000-4000-8000-000000000001';
     private const EVENT_ID = 'f4000000-0000-4000-8000-000000000001';
+    private const ORGANIZATION_MEMBERSHIP_ID = 'f3000000-0000-4000-8000-000000000001';
+    private const EVENT_MEMBERSHIP_ID = 'f6000000-0000-4000-8000-000000000001';
+    private const EVENT_MANAGER_ROLE_ID = '10000000-0000-4000-8000-000000000003';
 
     private ?KernelBrowser $client = null;
     private ?Connection $connection = null;
@@ -103,6 +106,49 @@ final class ListAuditLogsControllerIntegrationTest extends WebTestCase
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+        // El historial exige audit.read en el evento: es delegado (A) para EVENT_MANAGER, no viene en el rol.
+        $this->connection()->insert('organization_memberships', [
+            'id' => self::ORGANIZATION_MEMBERSHIP_ID,
+            'organization_id' => self::ORGANIZATION_ID,
+            'user_id' => self::USER_ID,
+            'access_type' => 'collaborator',
+            'status' => 'active',
+            'valid_from' => null,
+            'valid_until' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->connection()->insert('event_memberships', [
+            'id' => self::EVENT_MEMBERSHIP_ID,
+            'event_id' => self::EVENT_ID,
+            'user_id' => self::USER_ID,
+            'access_type' => 'operational',
+            'status' => 'active',
+            'valid_from' => null,
+            'valid_until' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->connection()->insert('event_membership_roles', [
+            'event_membership_id' => self::EVENT_MEMBERSHIP_ID,
+            'role_id' => self::EVENT_MANAGER_ROLE_ID,
+            'granted_by' => self::USER_ID,
+            'granted_at' => $now,
+        ]);
+        $auditReadPermissionId = $this->connection()->fetchOne('SELECT id FROM permissions WHERE code = ?', ['audit.read']);
+        self::assertIsString($auditReadPermissionId);
+        $this->connection()->insert('event_permission_grants', [
+            'id' => 'f7000000-0000-4000-8000-000000000001',
+            'event_membership_id' => self::EVENT_MEMBERSHIP_ID,
+            'permission_id' => $auditReadPermissionId,
+            'constraints_json' => null,
+            'status' => 'active',
+            'valid_from' => null,
+            'valid_until' => null,
+            'granted_by' => self::USER_ID,
+            'created_at' => $now,
+            'revoked_at' => null,
+        ]);
         foreach ([
             ['f5000000-0000-4000-8000-000000000001', 'identity.event_access_assigned', 'event_membership', ['target_user_id' => self::TARGET_ID, 'previous' => null, 'current' => ['roles' => ['SALES_OPERATOR']]]],
             ['f5000000-0000-4000-8000-000000000002', 'expense.created', 'expense', ['concept' => 'Toldos', 'category' => 'Logística', 'amount_minor' => 1000]],
@@ -129,6 +175,10 @@ final class ListAuditLogsControllerIntegrationTest extends WebTestCase
         }
 
         $this->connection->delete('audit_logs', ['organization_id' => self::ORGANIZATION_ID]);
+        $this->connection->delete('event_permission_grants', ['event_membership_id' => self::EVENT_MEMBERSHIP_ID]);
+        $this->connection->delete('event_membership_roles', ['event_membership_id' => self::EVENT_MEMBERSHIP_ID]);
+        $this->connection->delete('event_memberships', ['id' => self::EVENT_MEMBERSHIP_ID]);
+        $this->connection->delete('organization_memberships', ['organization_id' => self::ORGANIZATION_ID]);
         $this->connection->delete('events', ['organization_id' => self::ORGANIZATION_ID]);
         $this->connection->delete('organizations', ['id' => self::ORGANIZATION_ID]);
         $this->connection->delete('users', ['id' => self::USER_ID]);

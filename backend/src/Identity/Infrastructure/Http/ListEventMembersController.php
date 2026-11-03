@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Http;
 
+use App\Identity\Application\Authorization\AuthorizationPolicy;
+use App\Identity\Application\Authorization\AuthorizationRequest;
+use App\Identity\Domain\Permission;
 use App\Shared\Infrastructure\Http\ApiRequestInput;
+use App\Shared\Infrastructure\Http\AuthenticatedActorResolver;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 final readonly class ListEventMembersController
@@ -15,6 +21,8 @@ final readonly class ListEventMembersController
     public function __construct(
         private Connection $connection,
         private ApiRequestInput $input,
+        private AuthorizationPolicy $policy,
+        private AuthenticatedActorResolver $actors,
     ) {
     }
 
@@ -27,6 +35,25 @@ final readonly class ListEventMembersController
     {
         $this->input->uuid($organizationId, 'organizationId');
         $this->input->uuid($eventId, 'eventId');
+
+        $decision = $this->policy->decide(new AuthorizationRequest(
+            $this->actors->resolve($request),
+            $organizationId,
+            Permission::ORGANIZATION_MANAGE_MEMBERS,
+            $eventId,
+            new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+        ));
+        if (!$decision->allowed) {
+            throw new AccessDeniedHttpException('Solo propietarios o administradores organizacionales pueden consultar los miembros.');
+        }
+
+        $eventBelongsToOrganization = false !== $this->connection->fetchOne(
+            'SELECT 1 FROM events WHERE id = ? AND organization_id = ?',
+            [$eventId, $organizationId],
+        );
+        if (!$eventBelongsToOrganization) {
+            throw new NotFoundHttpException('El evento no existe en esta organización.');
+        }
 
         $rows = $this->connection->fetchAllAssociative(
             'SELECT u.id, u.display_name, u.email, om.access_type as org_access, u.status,

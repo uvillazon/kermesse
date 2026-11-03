@@ -6,3 +6,4 @@
 - [Estilo del frontend](project-frontend-estilo.md) — textos sin jerga, es-BO, pipe `fecha` (UTC), encabezado compacto, historial en frases y celular
 - [Sesiones en la nube y GitHub](reference-sesion-nube-github.md) — 403 al hacer push, create_branch y cómo montar MariaDB para la suite de integración
 - [Fechas en tests](feedback-fechas-en-tests.md) — tests HTTP usan reloj real: fechas relativas; env nuevas en phpunit.xml.dist
+- [Autorización de listados GET](project-autorizacion-listados-get.md) — permiso de cada GET y por qué eventos filtra para colaboradores

@@ -380,10 +380,21 @@ final readonly class ManageCatalogProductController
         name: 'api_v1_catalog_stands_list',
         methods: ['GET']
     )]
-    public function listStands(string $organizationId, string $eventId): JsonResponse
+    public function listStands(Request $request, string $organizationId, string $eventId): JsonResponse
     {
         $this->input->uuid($organizationId, 'organizationId');
         $this->input->uuid($eventId, 'eventId');
+
+        $authDecision = $this->policy->decide(new AuthorizationRequest(
+            $this->actors->resolve($request),
+            $organizationId,
+            Permission::CATALOG_READ,
+            $eventId,
+            new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+        ));
+        if (!$authDecision->allowed) {
+            throw new AccessDeniedHttpException('No tienes permiso para consultar los puestos de este evento.');
+        }
 
         $rows = $this->connection->fetchAllAssociative(
             'SELECT s.id, s.name, s.manager_name,

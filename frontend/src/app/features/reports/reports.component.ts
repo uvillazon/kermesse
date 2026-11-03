@@ -545,22 +545,22 @@ export class ReportsComponent {
     const orgId = this.ctx.orgId;
     const eventId = this.ctx.requireActive().id;
     this.loadError.set(null);
-    try {
-      const [prodRes, expRes, auditRes] = await Promise.all([
-        firstValueFrom(this.http.get<{ data: ApiProductReport[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products`)),
-        firstValueFrom(this.http.get<{ data: ApiExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
-        firstValueFrom(this.http.get<{ data: ApiAuditLog[] }>(`/organizations/${orgId}/events/${eventId}/audit-logs`)),
-      ]);
-      if (this.ctx.isStale(eventId)) return;
-      this.products.set(prodRes?.data ?? []);
-      this.expenseRows.set(expRes?.data ?? []);
-      this.auditLogs.set(auditRes?.data ?? []);
-    } catch (err) {
-      if (this.ctx.isStale(eventId)) return;
-      this.products.set([]);
-      this.expenseRows.set([]);
-      this.auditLogs.set([]);
-      this.loadError.set(describeLoadError(err, 'No se pudieron cargar los datos financieros del evento.'));
+    // allSettled: la auditoría exige audit.read (permiso delegado); su 403 no debe vaciar productos ni gastos.
+    const [prodRes, expRes, auditRes] = await Promise.allSettled([
+      firstValueFrom(this.http.get<{ data: ApiProductReport[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products`)),
+      firstValueFrom(this.http.get<{ data: ApiExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
+      firstValueFrom(this.http.get<{ data: ApiAuditLog[] }>(`/organizations/${orgId}/events/${eventId}/audit-logs`)),
+    ]);
+    if (this.ctx.isStale(eventId)) return;
+    this.products.set(prodRes.status === 'fulfilled' ? (prodRes.value?.data ?? []) : []);
+    this.expenseRows.set(expRes.status === 'fulfilled' ? (expRes.value?.data ?? []) : []);
+    this.auditLogs.set(auditRes.status === 'fulfilled' ? (auditRes.value?.data ?? []) : []);
+    const financialError = [prodRes, expRes].find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (financialError) {
+      this.loadError.set(describeLoadError(financialError.reason, 'No se pudieron cargar los datos financieros del evento.'));
+    }
+    if (auditRes.status === 'rejected') {
+      console.warn('[ReportsComponent] Historial de cambios no disponible:', auditRes.reason);
     }
   }
 
