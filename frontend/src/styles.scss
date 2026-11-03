@@ -45,29 +45,36 @@ a { color: inherit; text-decoration: none; }
 }
 
 .page-header {
+  /* Encabezado compacto: sin tarjeta, título y acciones en una línea; el contenido empieza enseguida. */
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
   flex-wrap: wrap;
-  background: var(--kf-surface);
-  padding: 1.25rem 1.5rem;
-  border-radius: 16px;
-  border: 1px solid var(--kf-line);
-  box-shadow: var(--kf-shadow-sm);
+  padding: 0 0 0.9rem;
+  border-bottom: 1px solid var(--kf-line);
+
+  > div:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
 
   h1 {
-    font-size: 1.55rem;
+    font-size: 1.4rem;
+    line-height: 1.2;
     font-weight: 800;
     color: var(--kf-primary);
-    margin: 0.2rem 0 0.25rem;
+    margin: 0;
     letter-spacing: -0.02em;
+    text-wrap: balance;
   }
 
   p {
     margin: 0;
     color: var(--kf-muted);
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    max-width: 65ch;
   }
 }
 
@@ -79,11 +86,11 @@ a { color: inherit; text-decoration: none; }
 }
 
 .eyebrow {
-  color: var(--kf-coral);
-  font-weight: 800;
+  color: var(--kf-muted);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 0.71rem;
+  font-size: 0.7rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;

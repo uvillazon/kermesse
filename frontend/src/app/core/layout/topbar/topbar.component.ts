@@ -55,14 +55,6 @@ import { EVENT_STATUS } from '../../models/domain';
             {{ status[ev.status]?.label ?? ev.status }}
           </span>
         }
-        <span
-          class="backend-pill"
-          [class.online]="auth.isBackendConnected()"
-          [title]="auth.isBackendConnected() ? 'Conectado a Symfony 127.0.0.1:8000' : 'Desconectado de 127.0.0.1:8000'"
-        >
-          <i class="pi pi-circle-fill"></i>
-          <span>API {{ auth.isBackendConnected() ? '8000 OK' : 'Offline' }}</span>
-        </span>
       </div>
 
       <div class="right">
@@ -221,27 +213,6 @@ import { EVENT_STATUS } from '../../models/domain';
       padding: 0.25rem 0.45rem 0.25rem 0.65rem;
       border-radius: 30px;
       border: 1px solid rgba(255, 255, 255, 0.15);
-    }
-
-    .backend-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      background: rgba(239, 68, 68, 0.2);
-      color: #fca5a5;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 700;
-
-      i {
-        font-size: 0.5rem;
-      }
-
-      &.online {
-        background: rgba(34, 197, 94, 0.2);
-        color: #86efac;
-      }
     }
 
     .avatar {

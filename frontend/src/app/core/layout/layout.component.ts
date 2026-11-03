@@ -59,7 +59,7 @@ import { EventContextService } from '../services/event-context.service';
   `,
   styles: [`
     .shell { display: flex; min-height: calc(100vh - 64px); }
-    .content { flex: 1; min-width: 0; padding: 1.75rem 2rem; max-width: 1400px; margin: 0 auto; }
+    .content { flex: 1; min-width: 0; padding: 1.25rem 2rem 2rem; max-width: 1400px; margin: 0 auto; }
     .readonly { margin-bottom: 1.25rem; }
     .retry, .empty a { margin-left: auto; font-weight: 600; background: none; border: 0; cursor: pointer; color: inherit; text-decoration: underline; }
     @media (max-width: 900px) { .content { padding: 1.1rem .9rem; } }

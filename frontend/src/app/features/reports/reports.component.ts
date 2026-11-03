@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -11,6 +11,7 @@ import { TableModule } from 'primeng/table';
 import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 interface ApiProductReport {
   id: string;
@@ -48,11 +49,10 @@ interface ApiAuditLog {
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [
+  imports: [FechaPipe, 
     CommonModule,
     FormsModule,
     DecimalPipe,
-    DatePipe,
     ButtonModule,
     DialogModule,
     InputTextModule,
@@ -65,9 +65,9 @@ interface ApiAuditLog {
       <app-load-error-banner [message]="loadError()" (retry)="loadData()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow">Administración &bull; Finanzas y Auditoría en MariaDB</span>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
           <h1>Reportes, balance y cierre</h1>
-          <p>Resultado consolidado del evento con ingresos, gastos y bitácora de auditoría en tiempo real.</p>
+          <p>Ingresos, gastos y resultado del evento, con el historial de cambios.</p>
         </div>
         <div class="page-actions">
           <p-button label="Actualizar" icon="pi pi-refresh" severity="secondary" [outlined]="true" (onClick)="loadData()" />
@@ -99,7 +99,7 @@ interface ApiAuditLog {
         <div class="kpi">
           <div class="kpi-label">Gastos operativos</div>
           <div class="kpi-value">Bs {{ expensesTotal() | number:'1.2-2' }}</div>
-          <div class="kpi-foot">{{ expenseRows().length }} conceptos en MariaDB</div>
+          <div class="kpi-foot">{{ expenseRows().length }} conceptos</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Resultado neto</div>
@@ -119,7 +119,7 @@ interface ApiAuditLog {
           <div class="panel-head">
             <div>
               <h2><i class="pi pi-chart-bar"></i> Ingresos por puesto y producto</h2>
-              <small class="muted">Sincronizado con el inventario de MariaDB</small>
+              <small class="muted">Unidades vendidas e ingreso por producto</small>
             </div>
             <span class="grid-meta">{{ filteredProducts().length }} de {{ products().length }}</span>
           </div>
@@ -201,7 +201,7 @@ interface ApiAuditLog {
           <div class="panel-head">
             <div>
               <h2><i class="pi pi-wallet"></i> Gastos del evento</h2>
-              <small class="muted">Egresos persistidos en MariaDB</small>
+              <small class="muted">Compras y pagos del evento</small>
             </div>
             <p-button
               size="small"
@@ -285,12 +285,12 @@ interface ApiAuditLog {
         </section>
       </div>
 
-      <!-- Grid 3: Bitácora de Auditoría Transaccional (audit_logs) -->
+      <!-- Grid 3: Historial de cambios (audit_logs) -->
       <section class="panel">
         <div class="panel-head">
           <div>
-            <h2><i class="pi pi-history"></i> Bitácora de auditoría transaccional (<code>audit_logs</code>)</h2>
-            <small class="muted">Trazabilidad inmutable de ventas, canjes de tickets, revisiones de pagos, catálogo e invitaciones.</small>
+            <h2><i class="pi pi-history"></i> Historial de cambios</h2>
+            <small class="muted">Quién hizo qué y cuándo: ventas, canjes, pagos, catálogo e invitaciones. No se puede editar.</small>
           </div>
           <span class="grid-meta">{{ filteredAuditLogs().length }} de {{ auditLogs().length }} registros</span>
         </div>
@@ -346,7 +346,7 @@ interface ApiAuditLog {
           </ng-template>
           <ng-template #body let-a>
             <tr>
-              <td><small class="mono">{{ a.created_at | date:'short' }}</small></td>
+              <td><small class="mono">{{ a.created_at | fecha }}</small></td>
               <td><span class="pill cyan mono">{{ a.action }}</span></td>
               <td><span class="pill gray">{{ a.aggregate_type }}</span></td>
               <td>
@@ -610,7 +610,7 @@ export class ReportsComponent {
         )
       );
       this.expenseDialog.set(false);
-      this.exported.set(`Gasto "${this.newConcept}" registrado en MariaDB.`);
+      this.exported.set(`Gasto "${this.newConcept}" registrado.`);
       await this.loadData();
     } catch (err: unknown) {
       const anyErr = err as { message?: string; originalError?: { error?: { message?: string } } };
@@ -641,7 +641,7 @@ export class ReportsComponent {
     a.download = `balance-${this.ctx.requireActive().id.slice(0, 8)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    this.exported.set('Archivo Excel/CSV descargado con los datos reales de MariaDB.');
+    this.exported.set('Archivo CSV descargado.');
   }
 
   exportPdf(): void {

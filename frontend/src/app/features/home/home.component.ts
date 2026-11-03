@@ -9,6 +9,7 @@ import { TableModule } from 'primeng/table';
 import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 interface HomeProduct {
   id: string;
@@ -51,15 +52,15 @@ interface HomeExpense {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe, RouterModule, ButtonModule, TableModule, LoadErrorBannerComponent],
+  imports: [FechaPipe, CommonModule, FormsModule, DecimalPipe, RouterModule, ButtonModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
       <app-load-error-banner [message]="loadError()" (retry)="loadData()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow">Panel del evento &bull; {{ ctx.active()?.date }}</span>
+          <span class="eyebrow">{{ (ctx.active()?.starts_at | fecha:"EEEE d 'de' MMMM 'de' y") || 'Evento sin fecha' }}</span>
           <h1>{{ ctx.active()?.name }}</h1>
-          <p>Resumen operativo en tiempo real conectado a MariaDB: ventas, pagos QR, tickets y recaudación por puesto.</p>
+          <p>Cómo va el evento: ventas, pagos por revisar, tickets y recaudación por puesto.</p>
         </div>
         <div class="page-actions">
           <p-button (onClick)="go('/sales')" label="Nueva venta" icon="pi pi-plus" [disabled]="ctx.readOnly()" />
@@ -72,7 +73,7 @@ interface HomeExpense {
         <div class="kpi">
           <div class="kpi-label">Recaudación acumulada</div>
           <div class="kpi-value">Bs {{ confirmedIncome() | number:'1.2-2' }}</div>
-          <div class="kpi-foot">Ventas del catálogo en MariaDB</div>
+          <div class="kpi-foot">Ventas confirmadas</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Pagos por verificar</div>
@@ -87,7 +88,7 @@ interface HomeExpense {
         <div class="kpi">
           <div class="kpi-label">Gastos registrados</div>
           <div class="kpi-value">Bs {{ expensesTotal() | number:'1.2-2' }}</div>
-          <div class="kpi-foot">{{ expenses().length }} conceptos en MariaDB</div>
+          <div class="kpi-foot">{{ expenses().length }} conceptos</div>
         </div>
       </div>
 
@@ -96,7 +97,7 @@ interface HomeExpense {
           <div class="panel-head">
             <div>
               <h2><i class="pi pi-shopping-bag"></i> Ventas registradas en vivo</h2>
-              <small class="muted">Transacciones reales desde MariaDB</small>
+              <small class="muted">Las últimas ventas del evento</small>
             </div>
             <a routerLink="/sales" class="link-more">Ir al POS →</a>
           </div>
@@ -159,7 +160,7 @@ interface HomeExpense {
               <tr>
                 <td>
                   <b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b><br />
-                  <small class="muted">{{ s.created_at | date:'shortTime' }} &bull; {{ s.operator_name }}</small>
+                  <small class="muted">{{ s.created_at | fecha:'HH:mm' }} &bull; {{ s.operator_name }}</small>
                 </td>
                 <td>
                   <b>{{ s.buyer_name || 'Comprador' }}</b><br />
@@ -170,7 +171,7 @@ interface HomeExpense {
                     {{ s.payment.method === 'cash' ? 'Efectivo' : 'QR Banco' }}
                   </span>
                 </td>
-                <td style="text-align: right" class="money"><b>Bs {{ s.total }}</b></td>
+                <td style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
                 <td>
                   <span class="pill" [class.green]="s.status === 'confirmed'" [class.yellow]="s.status === 'pending_payment'" [class.red]="s.status === 'cancelled'">
                     {{ s.status === 'confirmed' ? 'Confirmado' : (s.status === 'pending_payment' ? 'Por verificar' : 'Anulado') }}

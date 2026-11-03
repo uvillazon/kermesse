@@ -7,7 +7,7 @@ import { EventContextService } from './event-context.service';
 
 const ORG_A: AuthOrganization = { id: 'org-a', name: 'Org A', slug: 'org-a', access: 'owner' };
 const ORG_B: AuthOrganization = { id: 'org-b', name: 'Org B', slug: 'org-b', access: 'collaborator' };
-const EVENT = (id: string) => ({ id, slug: id, name: `Evento ${id}`, date: '01 ene 2027', status: 'open', stands: 0 });
+const EVENT = (id: string) => ({ id, slug: id, name: `Evento ${id}`, starts_at: '2027-01-01T14:00:00+00:00', date: '01 Jan 2027', status: 'open', stands: 0 });
 
 describe('EventContextService', () => {
   let http: HttpTestingController;

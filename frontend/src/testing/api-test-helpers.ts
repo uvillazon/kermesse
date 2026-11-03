@@ -10,7 +10,8 @@ export const TEST_EVENT: KEvent = {
   id: 'evt-test',
   slug: 'evento-prueba',
   name: 'Evento de prueba',
-  date: '01 ene 2027',
+  starts_at: '2027-01-01T14:00:00+00:00',
+  date: '01 Jan 2027',
   status: 'open',
   stands: 0,
 };

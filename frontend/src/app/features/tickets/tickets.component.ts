@@ -9,6 +9,7 @@ import { TableModule } from 'primeng/table';
 import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 type Tab = 'redeem' | 'list' | 'courses';
 
@@ -60,15 +61,15 @@ export interface ApiTicket {
 @Component({
   selector: 'app-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule, LoadErrorBannerComponent],
+  imports: [FechaPipe, CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
       <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow"><i class="pi pi-qrcode"></i> Operación en puesto &bull; Backend MariaDB</span>
-          <h1>Tickets y control de canjes</h1>
-          <p>Validación atómica de vouchers QR con bloqueo de concurrencia e historial auditable por ítem.</p>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
+          <h1>Tickets y canjes</h1>
+          <p>Escanea el ticket, entrega los productos y lleva el control por curso.</p>
         </div>
         <div class="segmented">
           <button [class.active]="tab() === 'redeem'" (click)="tab.set('redeem')">
@@ -98,7 +99,7 @@ export interface ApiTicket {
         <div class="kpi">
           <div class="kpi-label">Ítems ya entregados</div>
           <div class="kpi-value">{{ redeemedItemsCount() }} / {{ totalItemsCount() }}</div>
-          <div class="kpi-foot">Control de canje único en MariaDB</div>
+          <div class="kpi-foot">Cada producto se entrega una sola vez</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Canjes completados</div>
@@ -149,7 +150,7 @@ export interface ApiTicket {
               </div>
 
               <div class="quick-picks">
-                <small>Tickets reales en MariaDB (clic para probar):</small>
+                <small>Tickets recientes (toca uno para abrirlo):</small>
                 <div class="chips">
                   @for (t of tickets().slice(0, 6); track t.id) {
                     <button
@@ -188,7 +189,7 @@ export interface ApiTicket {
                       <span [class]="'pill ' + getStatusPillClass(t.status)">
                         {{ getStatusLabel(t.status) }}
                       </span>
-                      <div class="money mt-1">Bs {{ t.total }}</div>
+                      <div class="money mt-1">Bs {{ t.total | number:'1.2-2' }}</div>
                     </div>
                   </div>
 
@@ -282,7 +283,7 @@ export interface ApiTicket {
                           <i class="pi pi-history"></i>
                           <div>
                             <b>{{ r.quantity }} × {{ r.product_name }}</b>
-                            <small class="muted">Entregado por {{ r.redeemed_by_name }} &bull; {{ r.redeemed_at | date:'short' }}</small>
+                            <small class="muted">Entregado por {{ r.redeemed_by_name }} &bull; {{ r.redeemed_at | fecha }}</small>
                           </div>
                         </div>
                       }
@@ -394,7 +395,7 @@ export interface ApiTicket {
                 <tr>
                   <td>
                     <b class="mono text-primary">{{ t.ticket_number }}</b>
-                    <small class="block muted">{{ t.issued_at | date:'short' }}</small>
+                    <small class="block muted">{{ t.issued_at | fecha }}</small>
                   </td>
                   <td>
                     <b>{{ t.buyer_name || 'Venta rápida' }}</b>
@@ -406,7 +407,7 @@ export interface ApiTicket {
                       {{ t.payment_method === 'cash' ? 'Efectivo' : 'QR Banco' }}
                     </span>
                   </td>
-                  <td class="money">Bs {{ t.total }}</td>
+                  <td class="money">Bs {{ t.total | number:'1.2-2' }}</td>
                   <td style="min-width: 140px;">
                     <small>{{ t.redeemed_quantity }} / {{ t.total_quantity }} entregados</small>
                     <div class="bar">
@@ -904,8 +905,8 @@ export class TicketsComponent {
       );
       this.feedbackMessage.set(
         action === 'deliver'
-          ? 'Se registró +1 unidad entregada en la asignación del curso en MariaDB.'
-          : 'Se registró +1 unidad devuelta en la asignación del curso en MariaDB.'
+          ? 'Se registró 1 unidad entregada al curso.'
+          : 'Se registró 1 unidad devuelta por el curso.'
       );
       await this.loadCourseAllocations();
     } catch (err: unknown) {
@@ -1019,7 +1020,7 @@ export class TicketsComponent {
 
       if (res?.data) {
         this.feedbackMessage.set(
-          `Canje registrado en MariaDB para ${res.data.ticket_number} (${res.data.redeemed_quantity}/${res.data.total_quantity} entregados).`
+          `Entrega registrada para ${res.data.ticket_number} (${res.data.redeemed_quantity}/${res.data.total_quantity} entregados).`
         );
         await this.loadTickets();
       }

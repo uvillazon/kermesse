@@ -50,9 +50,9 @@ interface ApiCatalogProduct {
       <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow"><i class="pi pi-shop"></i> Configuración del evento &bull; Backend MariaDB</span>
-          <h1>Puestos y catálogo de productos</h1>
-          <p>Precios oficiales en unidades menores y disponibilidad en tiempo real sincronizados con la API Symfony.</p>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
+          <h1>Puestos y productos</h1>
+          <p>Lo que se vende en cada puesto, a qué precio y cuánto queda.</p>
         </div>
         <div class="page-actions">
           <p-button label="Actualizar" icon="pi pi-refresh" severity="secondary" [outlined]="true" (onClick)="reload()" />
@@ -240,7 +240,7 @@ interface ApiCatalogProduct {
 
       <div class="notice info">
         <i class="pi pi-database"></i>
-        <span>Los precios e inventario provienen de MariaDB vía <code>/api/v1/.../catalog/products</code>. Cada cambio incrementa la versión del catálogo y genera auditoría.</span>
+        <span>Cada cambio de precio o stock queda registrado en el historial del evento, con quién lo hizo y cuándo.</span>
       </div>
     </div>
 
@@ -281,7 +281,7 @@ interface ApiCatalogProduct {
       <ng-template #footer>
         <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialog.set(false)" />
         <p-button
-          [label]="editingProductId() ? 'Actualizar cambios' : 'Crear en MariaDB'"
+          [label]="editingProductId() ? 'Actualizar cambios' : 'Crear producto'"
           icon="pi pi-check"
           [loading]="saving()"
           (onClick)="saveProduct()"
@@ -513,7 +513,7 @@ export class CatalogComponent {
             }
           )
         );
-        this.feedbackMessage.set(`Producto "${this.formName}" actualizado en MariaDB.`);
+        this.feedbackMessage.set(`Producto "${this.formName}" actualizado.`);
       } else {
         await firstValueFrom(
           this.http.post(
@@ -532,7 +532,7 @@ export class CatalogComponent {
             }
           )
         );
-        this.feedbackMessage.set(`Nuevo producto "${this.formName}" creado en el catálogo de MariaDB.`);
+        this.feedbackMessage.set(`Producto "${this.formName}" creado.`);
       }
 
       this.dialog.set(false);
@@ -670,7 +670,7 @@ export class CatalogComponent {
         )
       );
       this.standDialog.set(false);
-      this.feedbackMessage.set(`Puesto "${this.newStandName}" creado en MariaDB.`);
+      this.feedbackMessage.set(`Puesto "${this.newStandName}" creado.`);
       await this.loadCatalogFromApi(eventId);
     } catch (err: unknown) {
       const anyErr = err as { message?: string; originalError?: { error?: { message?: string } } };

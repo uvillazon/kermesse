@@ -10,18 +10,19 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { EventContextService } from '../../core/services/event-context.service';
 import { EVENT_STATUS } from '../../core/models/domain';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, DialogModule, InputTextModule, TableModule],
+  imports: [FechaPipe, CommonModule, FormsModule, ButtonModule, DialogModule, InputTextModule, TableModule],
   template: `
     <div class="page">
       <div class="page-header">
         <div>
-          <span class="eyebrow">Organización &bull; Multi-evento en MariaDB</span>
-          <h1>Eventos de la organización</h1>
-          <p>Cada evento se gestiona por separado y conserva su historial permanente. Los datos nunca se mezclan entre eventos.</p>
+          <span class="eyebrow">{{ ctx.organization()?.name }}</span>
+          <h1>Eventos</h1>
+          <p>Cada evento tiene sus propias ventas, tickets y reportes, y conserva su historial.</p>
         </div>
         <p-button label="Crear evento" icon="pi pi-plus" (onClick)="openNewDialog()" />
       </div>
@@ -52,7 +53,7 @@ import { EVENT_STATUS } from '../../core/models/domain';
                 }
               </div>
               <h3>{{ e.name }}</h3>
-              <p class="muted"><i class="pi pi-calendar"></i> {{ e.date }} &bull; {{ e.stands }} puestos</p>
+              <p class="muted"><i class="pi pi-calendar"></i> {{ (e.starts_at | fecha:'d MMM y') || 'Sin fecha' }} &bull; {{ e.stands }} puestos</p>
               <p class="muted mono">/tienda/{{ e.slug }}</p>
               <div class="actions">
                 <p-button size="small" label="Abrir panel" icon="pi pi-arrow-right" iconPos="right" (onClick)="open(e.id)" />
@@ -68,7 +69,7 @@ import { EVENT_STATUS } from '../../core/models/domain';
         <div class="panel-head">
           <div>
             <h2><i class="pi pi-calendar"></i> Padrón histórico de eventos</h2>
-            <small class="muted">Sincronizado con la tabla <code>events</code> de MariaDB</small>
+            <small class="muted">Todos los eventos de la organización, incluidos los pasados</small>
           </div>
           <span class="grid-meta">{{ filteredEvents().length }} de {{ ctx.all().length }} eventos</span>
         </div>
@@ -78,7 +79,7 @@ import { EVENT_STATUS } from '../../core/models/domain';
             <i class="pi pi-search"></i>
             <input
               type="text"
-              placeholder="Búsqueda rápida por nombre o slug..."
+              placeholder="Búsqueda rápida por nombre o enlace..."
               [ngModel]="search()"
               (ngModelChange)="search.set($event)"
             />
@@ -116,7 +117,7 @@ import { EVENT_STATUS } from '../../core/models/domain';
           <ng-template #header>
             <tr>
               <th>Evento</th>
-              <th>Slug Tienda</th>
+              <th>Enlace de la tienda</th>
               <th>Fecha</th>
               <th>Puestos</th>
               <th>Estado</th>
@@ -132,7 +133,7 @@ import { EVENT_STATUS } from '../../core/models/domain';
                 }
               </td>
               <td class="mono muted">/tienda/{{ e.slug }}</td>
-              <td>{{ e.date }}</td>
+              <td>{{ (e.starts_at | fecha:'d MMM y') || 'Sin fecha' }}</td>
               <td>{{ e.stands }} puestos</td>
               <td>
                 <span [class]="'pill ' + (status[e.status]?.css || 'gray')">
@@ -148,7 +149,7 @@ import { EVENT_STATUS } from '../../core/models/domain';
       </section>
     </div>
 
-    <p-dialog header="Nuevo evento en MariaDB" [visible]="showNew()" (visibleChange)="showNew.set($event)" [modal]="true" [style]="{ width: '440px' }" [draggable]="false">
+    <p-dialog header="Nuevo evento" [visible]="showNew()" (visibleChange)="showNew.set($event)" [modal]="true" [style]="{ width: '440px' }" [draggable]="false">
       <div class="form-row">
         <label>Nombre del evento</label>
         <input pInputText class="w-full" [(ngModel)]="newName" (ngModelChange)="autoSlug($event)" placeholder="Ej. Kermesse Día de la Familia 2027" />
@@ -158,12 +159,12 @@ import { EVENT_STATUS } from '../../core/models/domain';
         <input pInputText type="date" class="w-full" [(ngModel)]="newDate" />
       </div>
       <div class="form-row">
-        <label>Dirección pública (slug)</label>
+        <label>Enlace de la tienda pública</label>
         <input pInputText class="w-full mono" [(ngModel)]="newSlug" placeholder="dia-familia-2027" />
       </div>
       <div class="notice warn">
         <i class="pi pi-info-circle"></i>
-        <span>El evento se registra en MariaDB como <b>borrador</b> con tu usuario asignado como responsable (<code>EVENT_MANAGER</code>).</span>
+        <span>El evento se crea como <b>borrador</b> y quedas como responsable del evento.</span>
       </div>
       <ng-template #footer>
         <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="showNew.set(false)" />
@@ -252,7 +253,7 @@ export class EventsComponent {
         )
       );
       this.showNew.set(false);
-      this.feedbackMessage.set(`Evento "${this.newName}" creado en MariaDB.`);
+      this.feedbackMessage.set(`Evento "${this.newName}" creado.`);
       await this.ctx.refreshEvents();
     } catch (err: unknown) {
       const anyErr = err as { message?: string; originalError?: { error?: { message?: string } } };

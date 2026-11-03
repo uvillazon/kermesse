@@ -8,9 +8,10 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
-import { EventRole, Member, ROLE_LABELS } from '../../core/models/domain';
+import { EventRole, Member, ROLE_DESCRIPTIONS, ROLE_LABELS } from '../../core/models/domain';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 const ORG_ACCESS: Record<string, string> = {
   owner: 'Propietario',
@@ -21,15 +22,15 @@ const ORG_ACCESS: Record<string, string> = {
 @Component({
   selector: 'app-access',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, DialogModule, InputTextModule, TableModule, LoadErrorBannerComponent],
+  imports: [FechaPipe, CommonModule, FormsModule, ButtonModule, DialogModule, InputTextModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
       <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow">Administración &bull; Backend MariaDB</span>
-          <h1>Usuarios, roles e invitaciones</h1>
-          <p>Membresías organizacionales, cambio transaccional de roles y outbox HMAC en tiempo real con la API Symfony.</p>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
+          <h1>Usuarios y roles</h1>
+          <p>Quién puede vender, canjear, revisar pagos o ver reportes en este evento.</p>
         </div>
         <p-button label="Invitar persona" icon="pi pi-user-plus" (onClick)="openInviteDialog()" [disabled]="ctx.readOnly()" />
       </div>
@@ -53,7 +54,7 @@ const ORG_ACCESS: Record<string, string> = {
         <div class="panel-head">
           <div>
             <h2><i class="pi pi-users"></i> Personas con acceso a {{ ctx.active()?.name }}</h2>
-            <small class="muted">Control de membresías organizacionales y roles operativos por evento.</small>
+            <small class="muted">Cambia los roles de cada persona o quítale el acceso a este evento.</small>
           </div>
           <span class="grid-meta">{{ filteredMembers().length }} de {{ members().length }} personas</span>
         </div>
@@ -182,8 +183,8 @@ const ORG_ACCESS: Record<string, string> = {
         <section class="panel">
           <div class="panel-head">
             <div>
-              <h2><i class="pi pi-envelope"></i> Invitaciones en MariaDB</h2>
-              <small class="muted">Enlace HMAC de un solo uso vía Outbox</small>
+              <h2><i class="pi pi-envelope"></i> Invitaciones</h2>
+              <small class="muted">Cada persona recibe un enlace personal que sirve una sola vez</small>
             </div>
             <span class="grid-meta">{{ filteredInvitations().length }} de {{ invitations().length }}</span>
           </div>
@@ -240,7 +241,7 @@ const ORG_ACCESS: Record<string, string> = {
                 <td>
                   <div class="who">
                     <b>{{ i.email }}</b>
-                    <small class="muted">Vence {{ i.expires }}</small>
+                    <small class="muted">Vence el {{ i.expires_at | fecha:"d 'de' MMM, HH:mm" }}</small>
                   </div>
                 </td>
                 <td>
@@ -272,18 +273,18 @@ const ORG_ACCESS: Record<string, string> = {
 
         <section class="panel">
           <div class="panel-head">
-            <h2><i class="pi pi-shield"></i> Matriz de roles en MariaDB</h2>
+            <h2><i class="pi pi-shield"></i> Qué permite cada rol</h2>
           </div>
           <div class="panel-body roles-help">
             @for (r of roleKeys; track r) {
               <div class="role-row">
                 <span class="pill gray">{{ roles[r] }}</span>
-                <small class="mono muted">{{ r }}</small>
+                <small class="muted">{{ roleDescriptions[r] }}</small>
               </div>
             }
             <div class="notice warn">
               <i class="pi pi-lock"></i>
-              <span>El permiso de <b>cerrar evento</b> aún no está asignado a ningún rol: requiere definir responsable.</span>
+              <span>Ningún rol puede <b>cerrar el evento</b> todavía: falta decidir quién lo autoriza.</span>
             </div>
           </div>
         </section>
@@ -309,7 +310,7 @@ const ORG_ACCESS: Record<string, string> = {
       </div>
       <div class="notice info">
         <i class="pi pi-shield"></i>
-        <span>Genera un outbox atómico en MariaDB con token HMAC versionado e idempotencia estricta.</span>
+        <span>Le enviaremos un correo con un enlace personal para unirse. El enlace sirve una sola vez.</span>
       </div>
       <ng-template #footer>
         <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="invite.set(false)" />
@@ -359,7 +360,8 @@ const ORG_ACCESS: Record<string, string> = {
     .who { display: flex; flex-direction: column; font-size: .86rem; }
     .roles { display: flex; gap: .3rem; flex-wrap: wrap; }
     .roles-help { display: flex; flex-direction: column; gap: .6rem; }
-    .role-row { display: flex; justify-content: space-between; align-items: center; padding: .35rem 0; border-bottom: 1px dashed #e2e8f0; }
+    .role-row { display: grid; gap: .3rem; justify-items: start; padding: .5rem 0; border-bottom: 1px dashed var(--kf-line); }
+    .role-row small { line-height: 1.4; }
     .checks { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; font-size: .85rem; }
   `],
 })
@@ -373,6 +375,7 @@ export class AccessComponent {
   private readonly invitationsError = signal<string | null>(null);
   protected readonly loadError = computed(() => this.membersError() ?? this.invitationsError());
   protected readonly roles = ROLE_LABELS;
+  protected readonly roleDescriptions = ROLE_DESCRIPTIONS;
   protected readonly roleKeys = Object.keys(ROLE_LABELS) as EventRole[];
   protected readonly orgAccess = ORG_ACCESS;
 
@@ -544,7 +547,7 @@ export class AccessComponent {
         )
       );
       this.editMemberDialog.set(false);
-      this.successMessage.set(`Roles de ${member.name} actualizados en MariaDB.`);
+      this.successMessage.set(`Roles de ${member.name} actualizados.`);
       await this.loadMembersFromApi(eventId);
     } catch (err: any) {
       this.errorMessage.set(
@@ -625,7 +628,7 @@ export class AccessComponent {
       );
 
       this.successMessage.set(
-        `Invitación creada y registrada en outbox transaccional para ${this.inviteEmail}.`
+        `Invitación enviada a ${this.inviteEmail}.`
       );
       this.invite.set(false);
       await this.loadInvitationsFromApi();

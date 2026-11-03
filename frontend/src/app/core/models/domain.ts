@@ -12,7 +12,8 @@ export type EventRole =
   | 'EVENT_MANAGER' | 'FINANCE_REVIEWER' | 'SALES_OPERATOR' | 'PAYMENT_REVIEWER'
   | 'TICKET_OPERATOR' | 'REPORT_VIEWER' | 'HISTORICAL_VIEWER';
 
-export interface KEvent { id: string; slug: string; name: string; date: string; status: EventStatus; stands: number; }
+/** `starts_at` es ISO 8601 (UTC) o null. `date` es el texto antiguo del backend (mes en inglés); no usar para mostrar. */
+export interface KEvent { id: string; slug: string; name: string; starts_at: string | null; date: string | null; status: EventStatus; stands: number; }
 export interface Stand { id: string; name: string; manager: string; icon: string; }
 export interface Product { id: string; standId: string; name: string; price: number; stock: number; sold: number; active: boolean; emoji: string; }
 export interface SaleLine { productId: string; qty: number; }
@@ -31,6 +32,20 @@ export const ROLE_LABELS: Record<EventRole, string> = {
   TICKET_OPERATOR: 'Operador de tickets',
   REPORT_VIEWER: 'Consulta de reportes',
   HISTORICAL_VIEWER: 'Consulta histórica',
+};
+
+/**
+ * Qué permite cada rol, en palabras del usuario. Sigue a `RolePermissionMap` del backend
+ * (no a la matriz v0.3, que aún no está aprobada). Actualizar si cambia ese mapa.
+ */
+export const ROLE_DESCRIPTIONS: Record<EventRole, string> = {
+  EVENT_MANAGER: 'Configura el evento y el catálogo, vende, revisa pagos, canjea tickets y ve reportes.',
+  FINANCE_REVIEWER: 'Revisa pagos, ve reportes y el balance, y exporta.',
+  SALES_OPERATOR: 'Ve el catálogo y registra ventas.',
+  PAYMENT_REVIEWER: 'Confirma o rechaza pagos por QR o transferencia.',
+  TICKET_OPERATOR: 'Busca tickets y entrega productos.',
+  REPORT_VIEWER: 'Ve y exporta reportes.',
+  HISTORICAL_VIEWER: 'Consulta tickets, reportes, balance e historial de eventos pasados.',
 };
 
 export const METHOD_LABELS: Record<PaymentMethod, string> = { cash: 'Efectivo', qr: 'QR bancario', transfer: 'Transferencia' };

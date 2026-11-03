@@ -10,6 +10,7 @@ import { EventContextService, onActiveEventChange } from '../../core/services/ev
 import { AuthService } from '../../core/services/auth.service';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 type Tab = 'pos' | 'verify' | 'history';
 
@@ -72,15 +73,15 @@ interface ApiSale {
 @Component({
   selector: 'app-sales',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule, LoadErrorBannerComponent],
+  imports: [FechaPipe, CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
       <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow">Operación en vivo &bull; MariaDB</span>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
           <h1>Ventas y pagos</h1>
-          <p>Registro de ventas en tiempo real con bloqueo pesimista de inventario y emisión inmediata de tickets QR.</p>
+          <p>Cobra en el puesto, revisa los pagos por QR y consulta el historial.</p>
         </div>
         <div class="segmented">
           <button [class.active]="tab() === 'pos'" (click)="tab.set('pos')">
@@ -351,14 +352,14 @@ interface ApiSale {
               <ng-template #body let-s>
                 <tr>
                   <td><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
-                  <td>{{ s.created_at | date:'short' }}</td>
+                  <td>{{ s.created_at | fecha }}</td>
                   <td>
                     <b>{{ s.buyer_name || 'Comprador' }}</b><br />
                     <small class="muted">{{ s.buyer_email }}</small>
                   </td>
                   <td>{{ describeItems(s) }}</td>
                   <td>{{ s.operator_name }}</td>
-                  <td style="text-align: right" class="money"><b>Bs {{ s.total }}</b></td>
+                  <td style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
                   <td><span class="pill yellow">Por verificar</span></td>
                   <td style="text-align: right">
                     <div class="row-actions">
@@ -403,7 +404,7 @@ interface ApiSale {
             <div class="panel-head">
               <div>
                 <h2><i class="pi pi-list"></i> Historial general de ventas</h2>
-                <small class="muted">Registro transaccional completo en MariaDB con trazabilidad por cajero y ticket.</small>
+                <small class="muted">Todas las ventas del evento, con quién cobró y el ticket emitido.</small>
               </div>
               <span class="grid-meta">{{ filteredSales().length }} de {{ sales().length }} ventas</span>
             </div>
@@ -478,7 +479,7 @@ interface ApiSale {
               <ng-template #body let-s>
                 <tr>
                   <td><b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b></td>
-                  <td>{{ s.created_at | date:'short' }}</td>
+                  <td>{{ s.created_at | fecha }}</td>
                   <td>
                     <b>{{ s.buyer_name || 'Comprador' }}</b><br />
                     <small class="muted">{{ s.buyer_email }}</small>
@@ -490,7 +491,7 @@ interface ApiSale {
                       {{ s.payment.method === 'cash' ? 'Efectivo' : 'QR / Transf.' }}
                     </span>
                   </td>
-                  <td style="text-align: right" class="money"><b>Bs {{ s.total }}</b></td>
+                  <td style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
                   <td>
                     <span class="pill" [class.green]="s.status === 'confirmed'" [class.yellow]="s.status === 'pending_payment'">
                       {{ s.status === 'confirmed' ? 'Confirmado' : 'Pendiente' }}
@@ -804,7 +805,7 @@ export class SalesComponent {
       }
     } catch (err: unknown) {
       const anyErr = err as { message?: string; originalError?: { error?: { message?: string } } };
-      const msg = anyErr?.originalError?.error?.message || anyErr?.message || 'Error al procesar la venta en el backend.';
+      const msg = anyErr?.originalError?.error?.message || anyErr?.message || 'No se pudo registrar la venta. Intenta de nuevo.';
       this.errorMessage.set(msg);
     } finally {
       this.submitting.set(false);
