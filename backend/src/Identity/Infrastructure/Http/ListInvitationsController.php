@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Http;
 
+use App\Identity\Application\Authorization\AuthorizationPolicy;
+use App\Identity\Application\Authorization\AuthorizationRequest;
+use App\Identity\Domain\Permission;
 use App\Shared\Infrastructure\Http\ApiRequestInput;
+use App\Shared\Infrastructure\Http\AuthenticatedActorResolver;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 final readonly class ListInvitationsController
@@ -15,6 +20,8 @@ final readonly class ListInvitationsController
     public function __construct(
         private Connection $connection,
         private ApiRequestInput $input,
+        private AuthorizationPolicy $policy,
+        private AuthenticatedActorResolver $actors,
     ) {
     }
 
@@ -26,6 +33,17 @@ final readonly class ListInvitationsController
     public function __invoke(Request $request, string $organizationId): JsonResponse
     {
         $this->input->uuid($organizationId, 'organizationId');
+
+        $decision = $this->policy->decide(new AuthorizationRequest(
+            $this->actors->resolve($request),
+            $organizationId,
+            Permission::ORGANIZATION_MANAGE_MEMBERS,
+            null,
+            new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+        ));
+        if (!$decision->allowed) {
+            throw new AccessDeniedHttpException('Solo propietarios o administradores organizacionales pueden consultar las invitaciones.');
+        }
 
         $rows = $this->connection->fetchAllAssociative(
             'SELECT ai.id, ai.email_normalized, ai.target_access_type, ai.status,

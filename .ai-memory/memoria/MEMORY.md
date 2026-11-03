@@ -2,4 +2,5 @@
 - [Sin Claude-Mem](feedback-sin-claude-mem.md) — no usar Claude-Mem ni servicios externos de memoria
 - [Protocolo de memoria](project-protocolo-memoria.md) — dónde vive la memoria y por qué dentro del repo
 - [Matriz de roles v0.3](project-matriz-roles-v03.md) — borrador del 2026-11-03 y decisiones que la bloquean
-- [Sesiones en la nube y GitHub](reference-sesion-nube-github.md) — 403 al hacer push, create_branch y que no hay MariaDB en la nube
+- [Sesiones en la nube y GitHub](reference-sesion-nube-github.md) — 403 al hacer push, create_branch y cómo levantar MariaDB para integración
+- [Autorización de listados GET](project-autorizacion-listados-get.md) — permiso de cada GET y por qué eventos filtra para colaboradores

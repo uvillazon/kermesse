@@ -544,17 +544,19 @@ export class ReportsComponent implements OnInit {
   async loadData(): Promise<void> {
     const orgId = this.ctx.orgId;
     const eventId = this.ctx.active().id;
-    try {
-      const [prodRes, expRes, auditRes] = await Promise.all([
-        firstValueFrom(this.http.get<{ data: ApiProductReport[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products`)),
-        firstValueFrom(this.http.get<{ data: ApiExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
-        firstValueFrom(this.http.get<{ data: ApiAuditLog[] }>(`/organizations/${orgId}/events/${eventId}/audit-logs`)),
-      ]);
-      if (prodRes?.data) this.products.set(prodRes.data);
-      if (expRes?.data && expRes.data.length > 0) this.expenseRows.set(expRes.data);
-      if (auditRes?.data) this.auditLogs.set(auditRes.data);
-    } catch (err) {
-      console.warn('[ReportsComponent] Error cargando datos financieros:', err);
+    // allSettled: un 403 en una sección (p. ej. auditoría sin audit.read) no debe vaciar las demás.
+    const [prodRes, expRes, auditRes] = await Promise.allSettled([
+      firstValueFrom(this.http.get<{ data: ApiProductReport[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products`)),
+      firstValueFrom(this.http.get<{ data: ApiExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
+      firstValueFrom(this.http.get<{ data: ApiAuditLog[] }>(`/organizations/${orgId}/events/${eventId}/audit-logs`)),
+    ]);
+    if (prodRes.status === 'fulfilled' && prodRes.value?.data) this.products.set(prodRes.value.data);
+    if (expRes.status === 'fulfilled' && expRes.value?.data && expRes.value.data.length > 0) this.expenseRows.set(expRes.value.data);
+    if (auditRes.status === 'fulfilled' && auditRes.value?.data) this.auditLogs.set(auditRes.value.data);
+    for (const result of [prodRes, expRes, auditRes]) {
+      if (result.status === 'rejected') {
+        console.warn('[ReportsComponent] Error cargando datos del reporte:', result.reason);
+      }
     }
   }
 
