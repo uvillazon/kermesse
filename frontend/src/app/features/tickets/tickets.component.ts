@@ -423,9 +423,9 @@ export interface ApiTicket {
                   <td data-label="">
                     <p-button
                       size="small"
-                      [label]="t.status === 'redeemed' ? 'Ver detalle' : 'Canjear'"
-                      [icon]="t.status === 'redeemed' ? 'pi pi-eye' : 'pi pi-qrcode'"
-                      [outlined]="t.status === 'redeemed'"
+                      [label]="isRedeemable(t) ? 'Canjear' : 'Ver detalle'"
+                      [icon]="isRedeemable(t) ? 'pi pi-qrcode' : 'pi pi-eye'"
+                      [outlined]="!isRedeemable(t)"
                       (onClick)="openInScanner(t)"
                     />
                   </td>
@@ -947,6 +947,11 @@ export class TicketsComponent {
       this.selectedTicketId.set(null);
       this.ticketsError.set(describeLoadError(err, 'No se pudieron cargar los tickets del evento.'));
     }
+  }
+
+  /** Solo se canjean tickets pagados con productos por entregar (no pendientes de pago, anulados ni completos). */
+  isRedeemable(t: Pick<ApiTicket, 'status'>): boolean {
+    return t.status === 'active' || t.status === 'partially_redeemed';
   }
 
   lookupTicket(): void {

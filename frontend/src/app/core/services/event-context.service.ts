@@ -40,6 +40,8 @@ export class EventContextService {
         this.events.set([]);
         this.activeId.set(null);
         if (orgId) {
+          // Organización nueva: la lista anterior ya no vale, así que sí se muestra "cargando".
+          this.stateSignal.set('loading');
           this.refreshEvents();
         } else {
           this.errorSignal.set(null);
@@ -63,7 +65,12 @@ export class EventContextService {
     if (!orgId) {
       return;
     }
-    this.stateSignal.set('loading');
+    // Solo la primera carga (o un reintento tras error) muestra "cargando". Una recarga con la
+    // lista ya visible ocurre en segundo plano: si no, el layout desmonta la pantalla actual y se
+    // pierden sus mensajes (p. ej. "Evento creado" o "ya se puede vender").
+    if (this.stateSignal() !== 'ready') {
+      this.stateSignal.set('loading');
+    }
     this.errorSignal.set(null);
     try {
       const res = await firstValueFrom(

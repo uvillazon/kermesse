@@ -66,6 +66,33 @@ describe('EventContextService', () => {
     expect(ctx.error()).toContain('No se pudieron cargar los eventos');
   });
 
+  it('una recarga con la lista visible no vuelve a "cargando" (no desmonta la pantalla actual)', async () => {
+    const ctx = await setup();
+    eventsRequest(ORG_A.id).flush({ data: [EVENT('e1')] });
+    await settle();
+    expect(ctx.state()).toBe('ready');
+
+    const refresh = ctx.refreshEvents();
+    expect(ctx.state()).toBe('ready');
+    eventsRequest(ORG_A.id).flush({ data: [{ ...EVENT('e1'), status: 'open' }, EVENT('e2')] });
+    await refresh;
+    expect(ctx.state()).toBe('ready');
+    expect(ctx.all().map((e) => e.id)).toEqual(['e1', 'e2']);
+  });
+
+  it('al cambiar de organización sí muestra "cargando"', async () => {
+    const ctx = await setup();
+    eventsRequest(ORG_A.id).flush({ data: [EVENT('e1')] });
+    await settle();
+
+    activeOrganization.set(ORG_B);
+    TestBed.tick();
+    expect(ctx.state()).toBe('loading');
+    eventsRequest(ORG_B.id).flush({ data: [] });
+    await settle();
+    expect(ctx.state()).toBe('ready');
+  });
+
   it('sin organización vigente no pide eventos y orgId no se inventa', async () => {
     const ctx = await setup(null);
     expect(ctx.organization()).toBeNull();

@@ -117,6 +117,8 @@ export function describeAudit(entry: AuditEntry, locale: string): AuditDescripti
       return { title: `Registró una devolución de ${str('course')}`, detail: courseProgress(num('quantity'), num('delivered'), num('returned')) };
     case 'event.created':
       return { title: `Creó el evento ${str('name')}`, detail: null };
+    case 'event.opened':
+      return { title: `Abrió el evento ${str('name')}`, detail: 'Desde ahora se puede vender y canjear' };
     case 'expense.created':
       return { title: `Registró el gasto ${str('concept')} por ${money('amount_minor')}`, detail: str('category') || null };
     case 'identity.event_access_assigned': {

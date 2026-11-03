@@ -25,6 +25,7 @@ const SAMPLES: AuditEntry[] = [
   entry('course_allocation.created', 'course_allocation', { course: '5.º Secundaria B', delegate: 'Prof. Diego Arce', product: 'Cuñapé (3 u.)', assigned_quantity: 30 }),
   entry('course_allocation.deliver', 'course_allocation', { course: '5.º Secundaria B', action: 'deliver', quantity: 1, delivered: 5, returned: 0 }),
   entry('event.created', 'event', { name: 'Kermesse de Primavera 2027', slug: 'kermesse-primavera-2027', status: 'draft' }),
+  entry('event.opened', 'event', { name: 'Feria del Libro 2027', previous_status: 'draft', status: 'open' }),
   entry('expense.created', 'expense', { concept: 'Alquiler de toldos', category: 'Logística', amount_minor: 25000 }),
   entry('identity.event_access_assigned', 'event_membership', { target_user_id: 'd1000000-0000-4000-8000-000000000002', previous: null, current: { access_type: 'operational', roles: ['SALES_OPERATOR', 'TICKET_OPERATOR'] } }, 'Luis Méndez'),
   entry('identity.event_roles_changed', 'event_membership', { target_user_id: 'd1000000-0000-4000-8000-000000000002', previous_roles: ['SALES_OPERATOR'], current_roles: ['PAYMENT_REVIEWER'] }, 'Luis Méndez'),
@@ -33,6 +34,8 @@ const SAMPLES: AuditEntry[] = [
   entry('identity.organization_ownership_transferred', 'organization_membership', { new_owner_user_id: 'd1000000-0000-4000-8000-000000000003' }, 'Carla Ríos'),
   entry('algo.desconocido', 'misterio', { foo: { bar: 1 } }),
 ];
+
+const sample = (action: string): AuditEntry => SAMPLES.find((s) => s.action === action)!;
 
 describe('Historial de cambios en lenguaje del usuario', () => {
   it.each(SAMPLES.map((s) => [s.action, s] as const))('%s no muestra UUID, JSON ni códigos', (_a, sample) => {
@@ -46,22 +49,26 @@ describe('Historial de cambios en lenguaje del usuario', () => {
   });
 
   it('describe una venta con monto boliviano, medio y ticket', () => {
-    expect(describeAudit(SAMPLES[0], L)).toEqual({ title: 'Registró una venta de Bs 18,00 en efectivo', detail: 'Ticket TKT-DFBAC64E' });
+    expect(describeAudit(sample('sale.created'), L)).toEqual({ title: 'Registró una venta de Bs 18,00 en efectivo', detail: 'Ticket TKT-DFBAC64E' });
   });
 
   it('nombra a la persona afectada y sus roles', () => {
-    expect(describeAudit(SAMPLES[12], L)).toEqual({ title: 'Dio acceso al evento a Luis Méndez', detail: 'Roles: Operador de ventas, Operador de tickets' });
-    expect(describeAudit(SAMPLES[13], L).detail).toBe('Antes: Operador de ventas · Ahora: Verificador de pagos');
+    expect(describeAudit(sample('identity.event_access_assigned'), L)).toEqual({ title: 'Dio acceso al evento a Luis Méndez', detail: 'Roles: Operador de ventas, Operador de tickets' });
+    expect(describeAudit(sample('identity.event_roles_changed'), L).detail).toBe('Antes: Operador de ventas · Ahora: Verificador de pagos');
   });
 
   it('si no conoce el nombre de la persona no muestra su id', () => {
-    expect(describeAudit(SAMPLES[14], L).title).toBe('Quitó el acceso al evento a una persona');
+    expect(describeAudit(sample('identity.event_access_revoked'), L).title).toBe('Quitó el acceso al evento a una persona');
   });
 
   it('gasto, entrega de ticket e invitación', () => {
-    expect(describeAudit(SAMPLES[11], L).title).toBe('Registró el gasto Alquiler de toldos por Bs 250,00');
-    expect(describeAudit(SAMPLES[4], L)).toEqual({ title: 'Entregó productos del ticket TKT-7E2053F5', detail: '2 de 3 productos entregados' });
-    expect(describeAudit(SAMPLES[15], L).detail).toBe('Roles: Revisor financiero · vence el 20 de nov');
+    expect(describeAudit(sample('expense.created'), L).title).toBe('Registró el gasto Alquiler de toldos por Bs 250,00');
+    expect(describeAudit(sample('ticket.redeemed'), L)).toEqual({ title: 'Entregó productos del ticket TKT-7E2053F5', detail: '2 de 3 productos entregados' });
+    expect(describeAudit(sample('identity.invitation_created'), L).detail).toBe('Roles: Revisor financiero · vence el 20 de nov');
+  });
+
+  it('describe la apertura de un evento', () => {
+    expect(describeAudit(sample('event.opened'), L)).toEqual({ title: 'Abrió el evento Feria del Libro 2027', detail: 'Desde ahora se puede vender y canjear' });
   });
 
   it('agrupa los tipos técnicos en áreas legibles', () => {

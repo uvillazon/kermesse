@@ -14,6 +14,12 @@ import { EventContextService } from '../services/event-context.service';
     <div class="shell">
       <app-sidebar [open]="sidebarOpen()" (navigate)="sidebarOpen.set(false)" />
       <main class="content">
+        @if (ctx.active()?.status === 'draft') {
+          <div class="notice warn readonly" role="status">
+            <i class="pi pi-pencil"></i>
+            <span><b>{{ ctx.active()?.name }}</b> está en borrador: puedes preparar puestos y productos, pero todavía no se puede vender ni canjear. Un propietario o administrador puede abrirlo desde <a routerLink="/events">Eventos</a>.</span>
+          </div>
+        }
         @if (ctx.readOnly()) {
           <div class="notice info readonly">
             <i class="pi pi-lock"></i>

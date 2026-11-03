@@ -9,7 +9,8 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { EventContextService } from '../../core/services/event-context.service';
-import { EVENT_STATUS } from '../../core/models/domain';
+import { EVENT_STATUS, KEvent } from '../../core/models/domain';
+import { describeLoadError } from '../../core/services/load-error';
 import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 @Component({
@@ -58,6 +59,9 @@ import { FechaPipe } from '../../core/ui/fecha.pipe';
               <div class="actions">
                 <p-button size="small" label="Abrir panel" icon="pi pi-arrow-right" iconPos="right" (onClick)="open(e.id)" />
                 <p-button size="small" label="Catálogo" severity="secondary" [outlined]="true" (onClick)="open(e.id, '/catalog')" [disabled]="e.status === 'closed'" />
+                @if (e.status === 'draft' && canOpenEvents()) {
+                  <p-button size="small" label="Abrir evento" icon="pi pi-play" severity="success" (onClick)="askOpen(e)" />
+                }
               </div>
             </div>
           </article>
@@ -171,6 +175,16 @@ import { FechaPipe } from '../../core/ui/fecha.pipe';
         <p-button label="Crear evento" icon="pi pi-check" [loading]="saving()" (onClick)="createEvent()" />
       </ng-template>
     </p-dialog>
+
+    <!-- Confirmación: abrir un evento habilita ventas y canjes -->
+    <p-dialog header="¿Abrir el evento?" [visible]="!!toOpen()" (visibleChange)="!$event && toOpen.set(null)" [modal]="true" [style]="{ width: '440px' }" [draggable]="false">
+      <p>Vas a abrir <b>{{ toOpen()?.name }}</b>.</p>
+      <p class="muted">Desde ese momento se puede vender en los puestos, recibir pedidos en la tienda pública y canjear tickets. Un evento abierto no vuelve a borrador.</p>
+      <ng-template #footer>
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="toOpen.set(null)" />
+        <p-button label="Sí, abrir evento" icon="pi pi-play" severity="success" [loading]="opening()" (onClick)="openEvent()" />
+      </ng-template>
+    </p-dialog>
   `,
   styles: [`
     .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
@@ -191,6 +205,15 @@ export class EventsComponent {
   protected readonly saving = signal(false);
   protected readonly feedbackMessage = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+
+  /** Abrir eventos: mismo permiso que crearlos (propietario o administrador de la organización). */
+  protected readonly canOpenEvents = computed(() =>
+    ['owner', 'administrator'].includes(this.ctx.organization()?.access ?? '')
+  );
+  protected readonly toOpen = signal<KEvent | null>(null);
+  protected readonly opening = signal(false);
+  /** Se conserva por evento para que un reintento tras un corte no abra dos veces. */
+  private openKey = '';
 
   // Filtros del Grid de Eventos
   protected readonly search = signal('');
@@ -229,7 +252,7 @@ export class EventsComponent {
 
   async createEvent(): Promise<void> {
     if (!this.newName.trim() || !this.newSlug.trim()) {
-      this.errorMessage.set('Completa el nombre y el slug del evento.');
+      this.errorMessage.set('Completa el nombre y el enlace de la tienda.');
       return;
     }
 
@@ -262,6 +285,36 @@ export class EventsComponent {
       );
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  askOpen(event: KEvent): void {
+    this.errorMessage.set(null);
+    this.feedbackMessage.set(null);
+    if (this.toOpen()?.id !== event.id) {
+      this.openKey = `evt-open-${event.id}-${crypto.randomUUID()}`;
+    }
+    this.toOpen.set(event);
+  }
+
+  async openEvent(): Promise<void> {
+    const event = this.toOpen();
+    if (!event) return;
+    this.opening.set(true);
+    try {
+      await firstValueFrom(
+        this.http.post(`/organizations/${this.ctx.orgId}/events/${event.id}/opening`, {}, {
+          headers: { 'Idempotency-Key': this.openKey },
+        })
+      );
+      this.toOpen.set(null);
+      this.feedbackMessage.set(`"${event.name}" está abierto: ya se puede vender y canjear.`);
+      await this.ctx.refreshEvents();
+    } catch (err: unknown) {
+      this.toOpen.set(null);
+      this.errorMessage.set(describeLoadError(err, `No se pudo abrir "${event.name}".`));
+    } finally {
+      this.opening.set(false);
     }
   }
 
