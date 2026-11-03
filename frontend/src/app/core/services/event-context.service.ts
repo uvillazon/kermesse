@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { KEvent } from '../models/domain';
@@ -25,6 +25,8 @@ export class EventContextService {
   readonly active = computed<KEvent | null>(
     () => this.events().find((e) => e.id === this.activeId()) ?? this.events()[0] ?? null
   );
+  /** Id del evento activo; solo emite cuando cambia el id, no cuando se refresca la lista. */
+  readonly activeEventId = computed(() => this.active()?.id ?? null);
   readonly readOnly = computed(() => this.active()?.status === 'closed');
 
   constructor() {
@@ -56,6 +58,11 @@ export class EventContextService {
     this.activeId.set(id);
   }
 
+  /** `true` si una respuesta pedida para `eventId` llega cuando el usuario ya cambió de evento. */
+  isStale(eventId: string): boolean {
+    return this.activeEventId() !== eventId;
+  }
+
   /**
    * Evento activo para las pantallas que solo se muestran con un evento cargado
    * (el layout no las renderiza sin él). Lanza si se llama sin evento.
@@ -67,4 +74,19 @@ export class EventContextService {
     }
     return ev;
   }
+}
+
+/**
+ * Ejecuta `load(eventId)` al crear la pantalla y cada vez que cambia el evento activo.
+ * Debe llamarse en un contexto de inyección (constructor o inicializador de campo).
+ * `load` corre fuera del seguimiento de señales: leer señales dentro no provoca recargas.
+ */
+export function onActiveEventChange(load: (eventId: string) => void): void {
+  const ctx = inject(EventContextService);
+  effect(() => {
+    const eventId = ctx.activeEventId();
+    if (eventId) {
+      untracked(() => load(eventId));
+    }
+  });
 }

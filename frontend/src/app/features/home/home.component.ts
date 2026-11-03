@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,7 +6,7 @@ import { Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
-import { EventContextService } from '../../core/services/event-context.service';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
@@ -224,7 +224,7 @@ interface HomeExpense {
     .link-more:hover { text-decoration: underline; }
   `],
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   protected readonly ctx = inject(EventContextService);
@@ -284,8 +284,14 @@ export class HomeComponent implements OnInit {
     return rows.map((r) => ({ ...r, pct: Math.round((r.amount / max) * 100) }));
   });
 
-  ngOnInit(): void {
-    this.loadData();
+  constructor() {
+    onActiveEventChange(() => {
+      // Al cambiar de evento se vacía primero: no mostrar cifras del evento anterior bajo el nuevo título.
+      this.products.set([]);
+      this.sales.set([]);
+      this.expenses.set([]);
+      this.loadData();
+    });
   }
 
   async loadData(): Promise<void> {
@@ -298,10 +304,12 @@ export class HomeComponent implements OnInit {
         firstValueFrom(this.http.get<{ data: HomeSale[] }>(`/organizations/${orgId}/events/${eventId}/sales`)),
         firstValueFrom(this.http.get<{ data: HomeExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
       ]);
+      if (this.ctx.isStale(eventId)) return;
       this.products.set(prodRes?.data ?? []);
       this.sales.set(salesRes?.data ?? []);
       this.expenses.set(expRes?.data ?? []);
     } catch (err) {
+      if (this.ctx.isStale(eventId)) return;
       this.products.set([]);
       this.sales.set([]);
       this.expenses.set([]);

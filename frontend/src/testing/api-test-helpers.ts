@@ -30,9 +30,12 @@ export const FORMER_MOCK_TEXTS = [
 /** Contexto de evento falso con un evento activo, para probar pantallas aisladas. */
 export function fakeEventContext(event: KEvent | null = TEST_EVENT) {
   const active = signal<KEvent | null>(event);
+  const activeEventId = computed(() => active()?.id ?? null);
   return {
     orgId: 'org-test',
     active,
+    activeEventId,
+    isStale: (eventId: string) => activeEventId() !== eventId,
     all: computed(() => (active() ? [active() as KEvent] : [])),
     state: signal('ready'),
     error: signal<string | null>(null),

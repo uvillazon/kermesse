@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { EventContextService } from '../../core/services/event-context.service';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
@@ -849,12 +849,14 @@ export class TicketsComponent {
   });
 
   constructor() {
-    effect(() => {
-      const ev = this.ctx.active();
-      if (ev?.id) {
-        this.loadTickets();
-        this.loadCourseAllocations();
-      }
+    onActiveEventChange(() => {
+      // Los tickets y la selección pertenecen al evento anterior: se descartan.
+      this.tickets.set([]);
+      this.courses.set([]);
+      this.selectedTicketId.set(null);
+      this.feedbackMessage.set(null);
+      this.errorMessage.set(null);
+      this.reload();
     });
   }
 
@@ -871,8 +873,10 @@ export class TicketsComponent {
       const res = await firstValueFrom(
         this.http.get<{ data: any[] }>(`/organizations/${orgId}/events/${eventId}/course-allocations`)
       );
+      if (this.ctx.isStale(eventId)) return;
       this.courses.set(res?.data ?? []);
     } catch (err) {
+      if (this.ctx.isStale(eventId)) return;
       this.courses.set([]);
       this.coursesError.set(describeLoadError(err, 'No se pudieron cargar las asignaciones por curso.'));
     }
@@ -922,12 +926,14 @@ export class TicketsComponent {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiTicket[] }>(`/organizations/${orgId}/events/${eventId}/tickets`)
       );
+      if (this.ctx.isStale(eventId)) return;
       const list = res?.data ?? [];
       this.tickets.set(list);
       if (!list.some((t) => t.id === this.selectedTicketId())) {
         this.selectedTicketId.set(list[0]?.id ?? null);
       }
     } catch (err) {
+      if (this.ctx.isStale(eventId)) return;
       this.tickets.set([]);
       this.selectedTicketId.set(null);
       this.ticketsError.set(describeLoadError(err, 'No se pudieron cargar los tickets del evento.'));

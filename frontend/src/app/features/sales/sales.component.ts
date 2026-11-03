@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,7 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { firstValueFrom } from 'rxjs';
-import { EventContextService } from '../../core/services/event-context.service';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { AuthService } from '../../core/services/auth.service';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
@@ -557,7 +557,7 @@ interface ApiSale {
     @media (max-width: 1000px) { .pos { grid-template-columns: 1fr; } .cart { position: static; } }
   `],
 })
-export class SalesComponent implements OnInit {
+export class SalesComponent {
   protected readonly ctx = inject(EventContextService);
   protected readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
@@ -672,9 +672,16 @@ export class SalesComponent implements OnInit {
   protected readonly itemCount = computed(() => this.cartLines().reduce((t, l) => t + l.qty, 0));
   protected readonly total = computed(() => this.cartLines().reduce((t, l) => t + l.subtotal, 0));
 
-  ngOnInit(): void {
-    this.loadCatalog();
-    this.loadSales();
+  constructor() {
+    onActiveEventChange(() => {
+      // El carrito y la última venta pertenecen al evento anterior: se descartan.
+      this.products.set([]);
+      this.sales.set([]);
+      this.cart.set({});
+      this.lastSale.set(null);
+      this.errorMessage.set(null);
+      this.reload();
+    });
   }
 
   resetPosFilters(): void {
@@ -703,8 +710,10 @@ export class SalesComponent implements OnInit {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiProduct[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products?page_size=100`)
       );
+      if (this.ctx.isStale(eventId)) return;
       this.products.set(res?.data ?? []);
     } catch (err: unknown) {
+      if (this.ctx.isStale(eventId)) return;
       this.products.set([]);
       this.catalogError.set(describeLoadError(err, 'No se pudo cargar el catálogo para vender.'));
     }
@@ -718,8 +727,10 @@ export class SalesComponent implements OnInit {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiSale[] }>(`/organizations/${orgId}/events/${eventId}/sales?page_size=100`)
       );
+      if (this.ctx.isStale(eventId)) return;
       this.sales.set(res?.data ?? []);
     } catch (err: unknown) {
+      if (this.ctx.isStale(eventId)) return;
       this.sales.set([]);
       this.salesError.set(describeLoadError(err, 'No se pudo cargar el historial de ventas.'));
     }

@@ -16,11 +16,16 @@ desactivado con explicación: antes solo cambiaba el estado en memoria.
 **Regla (decidida con el usuario):** nunca mostrar datos inventados como fallback. Ante error, aviso visible;
 ante lista vacía, vacío. Test de regresión en `features/screens-without-mock-data.spec.ts`.
 
+**Corregido — recarga al cambiar de evento:** las 6 pantallas usan `onActiveEventChange()` (en
+`event-context.service.ts`): reacciona solo al cambio de *id* (`activeEventId`), vacía los datos del evento
+anterior y recarga. Cada carga descarta respuestas tardías con `ctx.isStale(eventId)`; sin eso, una respuesta
+lenta del evento anterior pisaba la del nuevo. Ventas descarta el carrito al cambiar. Test:
+`features/screens-event-switch.spec.ts` (el evento viejo responde *después* del nuevo; es el caso que fallaba).
+Convención: toda pantalla nueva con datos por evento debe cargar con `onActiveEventChange` + `isStale`.
+
 **Pendiente:**
 - `CURRENT_ORG_ID` fijo en `event-context.service.ts`; el login no devuelve organización.
 - Sin control de UI por rol: cualquier usuario autenticado ve todos los menús y botones.
-- Inicio, Reportes y Ventas cargan en `ngOnInit`: al cambiar de evento en la barra superior siguen mostrando
-  los datos del evento anterior hasta navegar. Accesos, Catálogo y Tickets sí recargan (usan `effect`).
 - Backend: `ListOrganizationEventsController` devuelve `'28 oct 2026'` si el evento no tiene `starts_at`.
 - `ApiService` sin uso; `environment.prod.ts` apunta a `127.0.0.1:8000`; el login enlaza a `/tienda/halloween-2026`.
 - Endpoints sin pantalla: `ownership-transfers`, `invitations/accept`. En OpenAPI pero no en el backend:

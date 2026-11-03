@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -8,7 +8,7 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TableModule } from 'primeng/table';
-import { EventContextService } from '../../core/services/event-context.service';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
@@ -435,7 +435,7 @@ interface ApiAuditLog {
     .native { padding: 0.6rem; border: 1px solid var(--kf-line); border-radius: 8px; font: inherit; width: 100%; }
   `],
 })
-export class ReportsComponent implements OnInit {
+export class ReportsComponent {
   private readonly http = inject(HttpClient);
   protected readonly ctx = inject(EventContextService);
 
@@ -530,8 +530,16 @@ export class ReportsComponent implements OnInit {
   protected readonly exported = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
 
-  ngOnInit(): void {
-    this.loadData();
+  constructor() {
+    onActiveEventChange(() => {
+      // Al cambiar de evento se vacía primero: no mostrar cifras del evento anterior bajo el nuevo título.
+      this.products.set([]);
+      this.expenseRows.set([]);
+      this.auditLogs.set([]);
+      this.exported.set(null);
+      this.errorMessage.set(null);
+      this.loadData();
+    });
   }
 
   async loadData(): Promise<void> {
@@ -544,10 +552,12 @@ export class ReportsComponent implements OnInit {
         firstValueFrom(this.http.get<{ data: ApiExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
         firstValueFrom(this.http.get<{ data: ApiAuditLog[] }>(`/organizations/${orgId}/events/${eventId}/audit-logs`)),
       ]);
+      if (this.ctx.isStale(eventId)) return;
       this.products.set(prodRes?.data ?? []);
       this.expenseRows.set(expRes?.data ?? []);
       this.auditLogs.set(auditRes?.data ?? []);
     } catch (err) {
+      if (this.ctx.isStale(eventId)) return;
       this.products.set([]);
       this.expenseRows.set([]);
       this.auditLogs.set([]);

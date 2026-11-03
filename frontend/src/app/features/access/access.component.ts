@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, effect } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -7,7 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { EventContextService } from '../../core/services/event-context.service';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { EventRole, Member, ROLE_LABELS } from '../../core/models/domain';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
@@ -429,12 +429,10 @@ export class AccessComponent {
   });
 
   constructor() {
-    effect(() => {
-      const activeEvent = this.ctx.active();
-      if (activeEvent?.id) {
-        this.loadMembersFromApi(activeEvent.id);
-        this.loadInvitationsFromApi();
-      }
+    onActiveEventChange((eventId) => {
+      this.members.set([]);
+      this.loadMembersFromApi(eventId);
+      this.loadInvitationsFromApi();
     });
   }
 
@@ -461,8 +459,10 @@ export class AccessComponent {
           `/organizations/${this.ctx.orgId}/events/${eventId}/members`
         )
       );
+      if (this.ctx.isStale(eventId)) return;
       this.members.set(res?.data ?? []);
     } catch (err) {
+      if (this.ctx.isStale(eventId)) return;
       this.members.set([]);
       this.membersError.set(describeLoadError(err, 'No se pudieron cargar las personas con acceso.'));
     }

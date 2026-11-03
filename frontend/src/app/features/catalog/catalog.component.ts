@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, effect } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -9,7 +9,7 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
-import { EventContextService } from '../../core/services/event-context.service';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
 import { Stand } from '../../core/models/domain';
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
@@ -438,11 +438,12 @@ export class CatalogComponent {
   });
 
   constructor() {
-    effect(() => {
-      const activeEvent = this.ctx.active();
-      if (activeEvent?.id) {
-        this.loadCatalogFromApi(activeEvent.id);
-      }
+    onActiveEventChange((eventId) => {
+      this.stands.set([]);
+      this.products.set([]);
+      this.feedbackMessage.set(null);
+      this.errorMessage.set(null);
+      this.loadCatalogFromApi(eventId);
     });
   }
 
@@ -591,6 +592,7 @@ export class CatalogComponent {
           )
         ),
       ]);
+      if (this.ctx.isStale(eventId)) return;
 
       const icons = ['pi-sparkles', 'pi-star', 'pi-heart', 'pi-ticket', 'pi-shop'];
       this.stands.set(
@@ -628,6 +630,7 @@ export class CatalogComponent {
       }));
       this.products.set(mapped);
     } catch (err) {
+      if (this.ctx.isStale(eventId)) return;
       this.stands.set([]);
       this.products.set([]);
       this.loadError.set(describeLoadError(err, 'No se pudo cargar el catálogo del evento.'));
