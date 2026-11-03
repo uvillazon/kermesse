@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { EventContextService } from '../../services/event-context.service';
 import { AuthService } from '../../services/auth.service';
-import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
+import { EVENT_STATUS } from '../../models/domain';
 
 @Component({
   selector: 'app-topbar',
@@ -19,51 +19,62 @@ import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
           <span class="logo"><i class="pi pi-globe"></i></span>
           <span class="brand-name">Kermes<b>fera</b></span>
         </a>
-        <span class="divider"></span>
-        <span class="org">
-          <span class="org-badge">{{ org.initials }}</span>
-          <span class="org-name">{{ org.name }}</span>
-        </span>
+        @if (ctx.organization(); as org) {
+          <span class="divider"></span>
+          <span class="org">
+            <span class="org-badge">{{ initials(org.name) }}</span>
+            @if (auth.organizations().length > 1) {
+              <select
+                class="org-select"
+                [ngModel]="org.id"
+                (ngModelChange)="auth.selectOrganization($event)"
+                aria-label="Organización activa"
+              >
+                @for (o of auth.organizations(); track o.id) {
+                  <option [value]="o.id">{{ o.name }}</option>
+                }
+              </select>
+            } @else {
+              <span class="org-name">{{ org.name }}</span>
+            }
+          </span>
+        }
       </div>
 
       <div class="center">
-        <label class="event-select">
-          <i class="pi pi-calendar"></i>
-          <select [ngModel]="ctx.active().id" (ngModelChange)="ctx.select($event)" aria-label="Evento activo">
-            @for (e of ctx.all(); track e.id) {
-              <option [value]="e.id">{{ e.name }}</option>
-            }
-          </select>
-        </label>
-        <span class="pill" [class]="'pill ' + status[ctx.active().status].css">
-          {{ status[ctx.active().status].label }}
-        </span>
-        <span
-          class="backend-pill"
-          [class.online]="auth.isBackendConnected()"
-          [title]="auth.isBackendConnected() ? 'Conectado a Symfony 127.0.0.1:8000' : 'Desconectado de 127.0.0.1:8000'"
-        >
-          <i class="pi pi-circle-fill"></i>
-          <span>API {{ auth.isBackendConnected() ? '8000 OK' : 'Offline' }}</span>
-        </span>
+        @if (ctx.active(); as ev) {
+          <label class="event-select">
+            <i class="pi pi-calendar"></i>
+            <select [ngModel]="ev.id" (ngModelChange)="ctx.select($event)" aria-label="Evento activo">
+              @for (e of ctx.all(); track e.id) {
+                <option [value]="e.id">{{ e.name }}</option>
+              }
+            </select>
+          </label>
+          <span [class]="'pill ' + (status[ev.status]?.css ?? 'gray')">
+            {{ status[ev.status]?.label ?? ev.status }}
+          </span>
+        }
       </div>
 
       <div class="right">
-        <a
-          class="icon-btn"
-          routerLink="/tienda/halloween-2026"
-          target="_blank"
-          title="Ver página pública de compra"
-        >
-          <i class="pi pi-external-link"></i>
-        </a>
+        @if (ctx.active(); as ev) {
+          <a
+            class="icon-btn open-store"
+            [routerLink]="['/tienda', ev.slug]"
+            target="_blank"
+            title="Ver página pública de compra"
+          >
+            <i class="pi pi-external-link"></i>
+          </a>
+        }
 
         @if (auth.currentUser(); as user) {
           <div class="user-block">
             <span class="avatar">{{ user.avatarInitials }}</span>
             <span class="user">
               <b>{{ user.name }}</b>
-              <small>{{ getOrgAccessLabel(user.orgAccess) }}</small>
+              <small>{{ getOrgAccessLabel(ctx.organization()?.access ?? user.orgAccess) }}</small>
             </span>
             <button
               class="icon-btn logout-btn"
@@ -151,6 +162,16 @@ import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
       gap: 0.5rem;
       font-size: 0.85rem;
     }
+    .org-select {
+      font: inherit;
+      font-weight: 600;
+      border: 1px solid var(--kf-line);
+      border-radius: 8px;
+      padding: 0.25rem 0.5rem;
+      background: transparent;
+      color: inherit;
+      max-width: 220px;
+    }
 
     .org-badge {
       background: #fff;
@@ -192,27 +213,6 @@ import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
       padding: 0.25rem 0.45rem 0.25rem 0.65rem;
       border-radius: 30px;
       border: 1px solid rgba(255, 255, 255, 0.15);
-    }
-
-    .backend-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      background: rgba(239, 68, 68, 0.2);
-      color: #fca5a5;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 700;
-
-      i {
-        font-size: 0.5rem;
-      }
-
-      &.online {
-        background: rgba(34, 197, 94, 0.2);
-        color: #86efac;
-      }
     }
 
     .avatar {
@@ -267,9 +267,15 @@ import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
     }
 
     @media (max-width: 600px) {
-      .brand-name {
-        display: none;
-      }
+      /* Celular: menú, evento (ocupa el espacio libre) y usuario. La organización se cambia desde el menú. */
+      .topbar { gap: 0.5rem; padding: 0 0.75rem; }
+      .brand, .open-store { display: none; }
+      .left { flex: none; }
+      .center { flex: 1; min-width: 0; }
+      .right { flex: none; gap: 0.4rem; }
+      .event-select { flex: 1; min-width: 0; }
+      .event-select select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+      .user-block { padding: 0.2rem; background: transparent; }
     }
   `],
 })
@@ -277,8 +283,17 @@ export class TopbarComponent {
   readonly toggleSidebar = output<void>();
   protected readonly ctx = inject(EventContextService);
   protected readonly auth = inject(AuthService);
-  protected readonly org = ORGANIZATION;
-  protected readonly status = EVENT_STATUS;
+  protected readonly status: Record<string, { label: string; css: string } | undefined> = EVENT_STATUS;
+
+  initials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter((w) => /^[\p{L}\p{N}]/u.test(w))
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  }
 
   getOrgAccessLabel(type: 'owner' | 'administrator' | 'collaborator'): string {
     switch (type) {

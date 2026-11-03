@@ -9,6 +9,7 @@ use App\Identity\Application\Authorization\AuthorizationRequest;
 use App\Identity\Domain\Permission;
 use App\Shared\Infrastructure\Http\ApiRequestInput;
 use App\Shared\Infrastructure\Http\AuthenticatedActorResolver;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -57,14 +58,16 @@ final readonly class ListAuditLogsController
             [$organizationId, $eventId]
         );
 
-        $data = array_map(static function (array $r): array {
-            $metadata = [];
-            if (!empty($r['metadata_json'])) {
-                $decoded = json_decode((string) $r['metadata_json'], true);
-                if (is_array($decoded)) {
-                    $metadata = $decoded;
-                }
-            }
+        $metadataById = [];
+        foreach ($rows as $r) {
+            $decoded = empty($r['metadata_json']) ? null : json_decode((string) $r['metadata_json'], true);
+            $metadataById[(string) $r['id']] = is_array($decoded) ? $decoded : [];
+        }
+        $subjectNames = $this->subjectNames($metadataById);
+
+        $data = array_map(static function (array $r) use ($metadataById, $subjectNames): array {
+            $metadata = $metadataById[(string) $r['id']];
+            $subjectId = self::subjectUserId($metadata);
 
             return [
                 'id' => (string) $r['id'],
@@ -74,11 +77,53 @@ final readonly class ListAuditLogsController
                 'request_id' => (string) ($r['request_id'] ?? ''),
                 'actor_name' => (string) ($r['actor_name'] ?? 'Sistema'),
                 'actor_email' => (string) ($r['actor_email'] ?? ''),
+                // Nombre de la persona afectada (asignaciones, revocaciones, transferencias), para que el
+                // historial pueda decir "a Luis Méndez" en vez de mostrar su UUID. Null si no aplica.
+                'subject_name' => null !== $subjectId ? ($subjectNames[$subjectId] ?? null) : null,
                 'metadata' => $metadata,
                 'created_at' => (string) $r['created_at'],
             ];
         }, $rows);
 
         return new JsonResponse(['data' => $data]);
+    }
+
+    /** @param array<string, mixed> $metadata */
+    private static function subjectUserId(array $metadata): ?string
+    {
+        foreach (['target_user_id', 'new_owner_user_id'] as $key) {
+            if (isset($metadata[$key]) && is_string($metadata[$key])) {
+                return $metadata[$key];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $metadataById
+     *
+     * @return array<string, string> nombre visible por id de usuario
+     */
+    private function subjectNames(array $metadataById): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map(
+            static fn (array $metadata): ?string => self::subjectUserId($metadata),
+            $metadataById,
+        ))));
+        if ([] === $ids) {
+            return [];
+        }
+
+        $names = [];
+        foreach ($this->connection->fetchAllAssociative(
+            'SELECT id, display_name FROM users WHERE id IN (?)',
+            [$ids],
+            [ArrayParameterType::STRING],
+        ) as $user) {
+            $names[(string) $user['id']] = (string) $user['display_name'];
+        }
+
+        return $names;
     }
 }

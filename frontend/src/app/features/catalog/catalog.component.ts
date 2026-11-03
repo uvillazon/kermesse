@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, effect } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -9,8 +9,10 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
-import { EventContextService } from '../../core/services/event-context.service';
-import { PRODUCTS, STANDS, Stand } from '../../core/mock/mock-data';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
+import { Stand } from '../../core/models/domain';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
 interface ApiCatalogProduct {
   id: string;
@@ -41,14 +43,16 @@ interface ApiCatalogProduct {
     InputTextModule,
     InputNumberModule,
     ToggleSwitchModule,
+    LoadErrorBannerComponent,
   ],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow"><i class="pi pi-shop"></i> Configuración del evento &bull; Backend MariaDB</span>
-          <h1>Puestos y catálogo de productos</h1>
-          <p>Precios oficiales en unidades menores y disponibilidad en tiempo real sincronizados con la API Symfony.</p>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
+          <h1>Puestos y productos</h1>
+          <p>Lo que se vende en cada puesto, a qué precio y cuánto queda.</p>
         </div>
         <div class="page-actions">
           <p-button label="Actualizar" icon="pi pi-refresh" severity="secondary" [outlined]="true" (onClick)="reload()" />
@@ -149,6 +153,7 @@ interface ApiCatalogProduct {
         </div>
 
         <p-table
+          class="kf-stack"
           [value]="filtered()"
           [paginator]="true"
           [rows]="5"
@@ -171,10 +176,10 @@ interface ApiCatalogProduct {
           </ng-template>
           <ng-template #body let-p>
             <tr>
-              <td>
+              <td data-label="Código SKU">
                 <span class="pill gray mono">{{ p.code || (p.id | slice:0:8) }}</span>
               </td>
-              <td>
+              <td data-label="Producto">
                 <div class="prod-cell">
                   <span class="emoji">{{ p.emoji }}</span>
                   <div>
@@ -183,14 +188,14 @@ interface ApiCatalogProduct {
                   </div>
                 </div>
               </td>
-              <td>
+              <td data-label="Puesto">
                 <span class="pill blue">{{ p.standName || standName(p.standId) }}</span>
               </td>
-              <td class="money">Bs {{ p.price | number:'1.2-2' }}</td>
-              <td>
+              <td data-label="Precio Unitario" class="money">Bs {{ p.price | number:'1.2-2' }}</td>
+              <td data-label="Vendidos / Stock">
                 <b>{{ p.sold }}</b> / {{ p.stock }} u.
               </td>
-              <td class="stock">
+              <td data-label="Disponibilidad" class="stock">
                 <div class="stock-top">
                   <small [class.danger-text]="p.stock - p.sold <= 0">
                     {{ p.stock - p.sold <= 0 ? 'Agotado' : (p.stock - p.sold) + ' disponibles' }}
@@ -204,14 +209,14 @@ interface ApiCatalogProduct {
                   ></i>
                 </div>
               </td>
-              <td>
+              <td data-label="Activo">
                 <p-toggleswitch
                   [ngModel]="p.active"
                   (ngModelChange)="toggleActive(p, $event)"
                   [disabled]="ctx.readOnly() || saving()"
                 />
               </td>
-              <td>
+              <td data-label="">
                 <p-button
                   icon="pi pi-pencil"
                   [text]="true"
@@ -236,7 +241,7 @@ interface ApiCatalogProduct {
 
       <div class="notice info">
         <i class="pi pi-database"></i>
-        <span>Los precios e inventario provienen de MariaDB vía <code>/api/v1/.../catalog/products</code>. Cada cambio incrementa la versión del catálogo y genera auditoría.</span>
+        <span>Cada cambio de precio o stock queda registrado en el historial del evento, con quién lo hizo y cuándo.</span>
       </div>
     </div>
 
@@ -277,7 +282,7 @@ interface ApiCatalogProduct {
       <ng-template #footer>
         <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialog.set(false)" />
         <p-button
-          [label]="editingProductId() ? 'Actualizar cambios' : 'Crear en MariaDB'"
+          [label]="editingProductId() ? 'Actualizar cambios' : 'Crear producto'"
           icon="pi pi-check"
           [loading]="saving()"
           (onClick)="saveProduct()"
@@ -367,8 +372,9 @@ export class CatalogComponent {
   private readonly http = inject(HttpClient);
   protected readonly ctx = inject(EventContextService);
 
-  protected readonly stands = signal<Stand[]>(STANDS);
-  protected readonly products = signal<any[]>(structuredClone(PRODUCTS));
+  protected readonly stands = signal<Stand[]>([]);
+  protected readonly products = signal<any[]>([]);
+  protected readonly loadError = signal<string | null>(null);
   protected readonly dialog = signal(false);
   protected readonly standDialog = signal(false);
   protected readonly saving = signal(false);
@@ -379,7 +385,7 @@ export class CatalogComponent {
   // Campos del formulario modal
   protected formName = '';
   protected formCode = '';
-  protected formStandName = STANDS[0]?.name ?? 'Parrilla San Andrés';
+  protected formStandName = '';
   protected formPrice = 25;
   protected formStock = 80;
 
@@ -433,11 +439,12 @@ export class CatalogComponent {
   });
 
   constructor() {
-    effect(() => {
-      const activeEvent = this.ctx.active();
-      if (activeEvent?.id) {
-        this.loadCatalogFromApi(activeEvent.id);
-      }
+    onActiveEventChange((eventId) => {
+      this.stands.set([]);
+      this.products.set([]);
+      this.feedbackMessage.set(null);
+      this.errorMessage.set(null);
+      this.loadCatalogFromApi(eventId);
     });
   }
 
@@ -452,7 +459,7 @@ export class CatalogComponent {
     this.editingProductId.set(null);
     this.formName = '';
     this.formCode = `PRD-${Math.floor(10 + Math.random() * 89)}`;
-    this.formStandName = this.stands()[0]?.name ?? 'Parrilla San Andrés';
+    this.formStandName = this.stands()[0]?.name ?? '';
     this.formPrice = 20;
     this.formStock = 60;
     this.errorMessage.set(null);
@@ -475,13 +482,17 @@ export class CatalogComponent {
       this.errorMessage.set('Ingresa el nombre del producto.');
       return;
     }
+    if (!this.formStandName) {
+      this.errorMessage.set('Crea o selecciona un puesto antes de guardar el producto.');
+      return;
+    }
 
     this.saving.set(true);
     this.errorMessage.set(null);
     this.feedbackMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     const unitPriceMinor = Math.round((this.formPrice || 1) * 100);
     const stock = Math.max(1, Math.round(this.formStock || 1));
 
@@ -503,7 +514,7 @@ export class CatalogComponent {
             }
           )
         );
-        this.feedbackMessage.set(`Producto "${this.formName}" actualizado en MariaDB.`);
+        this.feedbackMessage.set(`Producto "${this.formName}" actualizado.`);
       } else {
         await firstValueFrom(
           this.http.post(
@@ -522,7 +533,7 @@ export class CatalogComponent {
             }
           )
         );
-        this.feedbackMessage.set(`Nuevo producto "${this.formName}" creado en el catálogo de MariaDB.`);
+        this.feedbackMessage.set(`Producto "${this.formName}" creado.`);
       }
 
       this.dialog.set(false);
@@ -540,7 +551,7 @@ export class CatalogComponent {
   async toggleActive(p: any, active: boolean): Promise<void> {
     p.active = active;
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
 
     try {
       await firstValueFrom(
@@ -568,6 +579,7 @@ export class CatalogComponent {
   }
 
   private async loadCatalogFromApi(eventId: string): Promise<void> {
+    this.loadError.set(null);
     try {
       const [res, standsRes] = await Promise.all([
         firstValueFrom(
@@ -581,48 +593,48 @@ export class CatalogComponent {
           )
         ),
       ]);
+      if (this.ctx.isStale(eventId)) return;
 
-      if (standsRes?.data && standsRes.data.length > 0) {
-        const icons = ['pi-sparkles', 'pi-star', 'pi-heart', 'pi-ticket', 'pi-shop'];
-        this.stands.set(
-          standsRes.data.map((s, idx) => ({
-            id: s.id,
-            name: s.name,
-            manager: s.manager,
-            icon: icons[idx % icons.length],
-          }))
-        );
-      }
+      const icons = ['pi-sparkles', 'pi-star', 'pi-heart', 'pi-ticket', 'pi-shop'];
+      this.stands.set(
+        (standsRes?.data ?? []).map((s, idx) => ({
+          id: s.id,
+          name: s.name,
+          manager: s.manager,
+          icon: icons[idx % icons.length],
+        }))
+      );
 
-      if (res?.data && res.data.length > 0) {
-        const emojis: Record<string, string> = {
-          'COM-01': '🍖',
-          'COM-02': '🥩',
-          'COM-03': '🍔',
-          'BEB-01': '🥤',
-          'BEB-02': '🍹',
-          'POS-01': '🧁',
-          'POS-02': '🍰',
-          'JUE-01': '🎃',
-        };
+      const emojis: Record<string, string> = {
+        'COM-01': '🍖',
+        'COM-02': '🥩',
+        'COM-03': '🍔',
+        'BEB-01': '🥤',
+        'BEB-02': '🍹',
+        'POS-01': '🧁',
+        'POS-02': '🍰',
+        'JUE-01': '🎃',
+      };
 
-        const mapped = res.data.map((p) => ({
-          id: p.id,
-          code: p.code,
-          standId: p.stand_id,
-          standName: p.stand_name,
-          name: p.name,
-          price: p.unit_price,
-          stock: p.stock,
-          sold: p.sold,
-          active: p.active,
-          version: p.version,
-          emoji: emojis[p.code] || '🍽️',
-        }));
-        this.products.set(mapped);
-      }
+      const mapped = (res?.data ?? []).map((p) => ({
+        id: p.id,
+        code: p.code,
+        standId: p.stand_id,
+        standName: p.stand_name,
+        name: p.name,
+        price: p.unit_price,
+        stock: p.stock,
+        sold: p.sold,
+        active: p.active,
+        version: p.version,
+        emoji: emojis[p.code] || '🍽️',
+      }));
+      this.products.set(mapped);
     } catch (err) {
-      console.warn('[CatalogComponent] Usando catálogo inicial/fallback:', err);
+      if (this.ctx.isStale(eventId)) return;
+      this.stands.set([]);
+      this.products.set([]);
+      this.loadError.set(describeLoadError(err, 'No se pudo cargar el catálogo del evento.'));
     }
   }
 
@@ -641,7 +653,7 @@ export class CatalogComponent {
 
     this.saving.set(true);
     this.errorMessage.set(null);
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
 
     try {
       await firstValueFrom(
@@ -659,7 +671,7 @@ export class CatalogComponent {
         )
       );
       this.standDialog.set(false);
-      this.feedbackMessage.set(`Puesto "${this.newStandName}" creado en MariaDB.`);
+      this.feedbackMessage.set(`Puesto "${this.newStandName}" creado.`);
       await this.loadCatalogFromApi(eventId);
     } catch (err: unknown) {
       const anyErr = err as { message?: string; originalError?: { error?: { message?: string } } };

@@ -122,7 +122,7 @@ import { AuthService, DEMO_ACCOUNTS, DemoAccount } from '../../core/services/aut
           </p>
           <div class="security-badge" [class.backend-ok]="authService.isBackendConnected()">
             <i class="pi" [class.pi-check-circle]="authService.isBackendConnected()" [class.pi-shield]="!authService.isBackendConnected()"></i>
-            <span>{{ authService.isBackendConnected() ? 'Servicio Symfony 127.0.0.1:8000 Conectado' : 'Modo demostración' }} &bull; JWT HS256</span>
+            <span>{{ authService.isBackendConnected() ? 'Conexión segura' : 'Sin conexión con el servidor' }}</span>
           </div>
         </footer>
       </div>
@@ -436,7 +436,7 @@ export class LoginComponent {
       this.redirectToDestination();
     } catch (err: unknown) {
       const anyErr = err as { message?: string; originalError?: { error?: { message?: string } } };
-      const msg = anyErr?.originalError?.error?.message || anyErr?.message || (err instanceof Error ? err.message : 'Error al autenticar contra el backend.');
+      const msg = anyErr?.originalError?.error?.message || anyErr?.message || (err instanceof Error ? err.message : 'No pudimos iniciar sesión. Revisa tu correo y contraseña.');
       this.errorMessage.set(msg);
     } finally {
       this.loading.set(false);

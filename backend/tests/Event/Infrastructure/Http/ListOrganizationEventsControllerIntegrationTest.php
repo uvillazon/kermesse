@@ -11,7 +11,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Autorización de los listados GET por organización/evento.
+ * Autorización de los listados GET por organización/evento y formato de fecha del listado de eventos.
  */
 final class ListOrganizationEventsControllerIntegrationTest extends WebTestCase
 {
@@ -74,6 +74,18 @@ final class ListOrganizationEventsControllerIntegrationTest extends WebTestCase
             [self::ASSIGNED_EVENT_ID, self::UNASSIGNED_EVENT_ID],
             array_column($this->response()['data'], 'id'),
         );
+    }
+
+    public function testReturnsIsoStartDateAndNullWhenEventHasNoDate(): void
+    {
+        $this->get($this->eventsPath(self::ORGANIZATION_ID), self::OWNER_ID);
+
+        self::assertResponseStatusCodeSame(200);
+        $events = array_column($this->response()['data'], null, 'id');
+        self::assertSame('2027-03-21T14:00:00+00:00', $events[self::ASSIGNED_EVENT_ID]['starts_at']);
+        self::assertNull($events[self::UNASSIGNED_EVENT_ID]['starts_at']);
+        // Antes devolvía '28 oct 2026' cuando el evento no tenía fecha.
+        self::assertNull($events[self::UNASSIGNED_EVENT_ID]['date']);
     }
 
     public function testCollaboratorListsOnlyAssignedEvents(): void
@@ -262,16 +274,16 @@ final class ListOrganizationEventsControllerIntegrationTest extends WebTestCase
             ]);
         }
         foreach ([
-            [self::ASSIGNED_EVENT_ID, self::ORGANIZATION_ID, 'list-events-assigned', '2026-10-30 16:00:02'],
-            [self::UNASSIGNED_EVENT_ID, self::ORGANIZATION_ID, 'list-events-unassigned', '2026-10-30 16:00:01'],
-            [self::OTHER_ORGANIZATION_EVENT_ID, self::OTHER_ORGANIZATION_ID, 'list-events-foreign', '2026-10-30 16:00:00'],
-        ] as [$eventId, $organizationId, $slug, $createdAt]) {
+            [self::ASSIGNED_EVENT_ID, self::ORGANIZATION_ID, 'list-events-assigned', '2026-10-30 16:00:02', '2027-03-21 14:00:00'],
+            [self::UNASSIGNED_EVENT_ID, self::ORGANIZATION_ID, 'list-events-unassigned', '2026-10-30 16:00:01', null],
+            [self::OTHER_ORGANIZATION_EVENT_ID, self::OTHER_ORGANIZATION_ID, 'list-events-foreign', '2026-10-30 16:00:00', null],
+        ] as [$eventId, $organizationId, $slug, $createdAt, $startsAt]) {
             $this->connection()->insert('events', [
                 'id' => $eventId,
                 'organization_id' => $organizationId,
                 'name' => $slug,
                 'slug' => $slug,
-                'starts_at' => null,
+                'starts_at' => $startsAt,
                 'ends_at' => null,
                 'status' => 'open',
                 'closed_at' => null,

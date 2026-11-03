@@ -70,7 +70,10 @@ final readonly class ListOrganizationEventsController
             'slug' => (string) $row['slug'],
             'name' => (string) $row['name'],
             'status' => (string) $row['status'],
-            'date' => null !== $row['starts_at'] ? (new \DateTimeImmutable((string) $row['starts_at']))->format('d M Y') : '28 oct 2026',
+            // `starts_at` en ISO 8601 (UTC) para que el cliente lo formatee en su idioma y zona horaria.
+            // `date` se mantiene por compatibilidad; es null si el evento no tiene fecha (antes se inventaba una).
+            'starts_at' => null !== $row['starts_at'] ? (new \DateTimeImmutable((string) $row['starts_at'], new \DateTimeZone('UTC')))->format(\DATE_ATOM) : null,
+            'date' => null !== $row['starts_at'] ? (new \DateTimeImmutable((string) $row['starts_at'], new \DateTimeZone('UTC')))->format('d M Y') : null,
             'stands' => (int) $row['stands_count'],
         ], $rows);
 

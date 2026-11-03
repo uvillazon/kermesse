@@ -18,7 +18,10 @@ eventos, tickets, miembros (con correos), invitaciones, auditoría y puestos de 
 
 ## Verificación
 MariaDB 10.11 levantada en la nube con base desechable: 15 migraciones OK, prueba nueva 19/19.
-Suite completa: 9 fallos preexistentes ajenos (ver `reference-sesion-nube-github`).
+Tras fusionar `master` (PR #5 arregló la suite): 107 pruebas en verde. La prueba de auditoría de `master`
+usaba un actor sin membresía; ahora el fixture le da membresía, `EVENT_MANAGER` y `audit.read` delegado.
+Conflictos resueltos: Reportes combina `allSettled` con `isStale`/`loadError`; la prueba de eventos absorbe el
+caso de fecha ISO de `master`.
 
 ## Pendiente
 - Endpoint de auditoría organizacional (registros con `event_id` NULL) con permiso de organización.

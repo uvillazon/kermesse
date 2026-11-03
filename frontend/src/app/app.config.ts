@@ -1,4 +1,6 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeEsBo from '@angular/common/locales/es-BO';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
@@ -9,8 +11,12 @@ import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { apiPrefixInterceptor } from './core/interceptors/api-prefix.interceptor';
 import { errorHandlerInterceptor } from './core/interceptors/error-handler.interceptor';
 
+// Números y fechas en formato boliviano: Bs 1.600,00 · 03/11/26 10:14 · 21 mar 2027.
+registerLocaleData(localeEsBo);
+
 export const appConfig: ApplicationConfig = {
   providers: [
+    { provide: LOCALE_ID, useValue: 'es-BO' },
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(

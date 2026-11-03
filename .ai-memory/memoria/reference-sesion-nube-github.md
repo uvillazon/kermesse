@@ -1,6 +1,6 @@
 ---
 name: reference-sesion-nube-github
-description: Gotchas de las sesiones en la nube (permisos de GitHub, push 403, cómo levantar MariaDB y correr integración)
+description: Gotchas de las sesiones en la nube (permisos de GitHub, push 403, sin base de datos local)
 metadata:
   type: reference
 ---
@@ -14,15 +14,18 @@ Aprendido el 2026-11-03 trabajando desde Claude Code en la nube (`/home/user/ker
 - Tras fusionar un PR, la rama de trabajo se reinicia desde `master` con el mismo nombre y se sube con
   `--force-with-lease` (solo tenía historia ya fusionada).
 - Los PR se fusionan con squash salvo que se pida otro método.
-- La nube no trae MariaDB, `vendor/` ni `.env.local`, pero **sí se pueden instalar** (probado 2026-11-03):
-  `composer install` (tarda, clona desde git), `apt-get install -y mariadb-server`, `service mariadb start`,
-  crear una base y usuario desechables, exportar en la shell las variables de `phpunit.xml.dist` con ese
-  `DATABASE_URL`, correr `php bin/console doctrine:migrations:migrate -n` y luego
-  `KERMESFERA_INTEGRATION_DATABASE_URL=... vendor/bin/phpunit`. La versión instalada es 10.11 (no 10.4.18).
-  Correr la suite regenera `backend/config/reference.php`: revertirlo antes de commitear.
-  Las credenciales nunca se versionan.
-- Al 2026-11-03 fallan 9 pruebas preexistentes con BD (TransactionalExecutorTest sin driver, invitaciones con
-  `expires_at` fijo ya vencido, CreateSale con 500); no las causó el cambio de autorización de listados.
+- La nube no trae MariaDB ni `.env.local`, pero se puede montar una base desechable para la suite de
+  integración (verificado el 2026-11-03, se instala MariaDB 10.11):
+  1. `apt-get install -y mariadb-server` (si falla, `apt-get update` antes) y `composer install` en `backend/`.
+  2. `mkdir -p /run/mysqld && chown mysql:mysql /run/mysqld`, luego `mysqld_safe --user=mysql &` y esperar con
+     `mysqladmin ping`; crear base `kermesfera_test` y un usuario
+     local desechable con `mysql -e "..."`.
+  3. Migrar: `APP_ENV=test DATABASE_URL=<url> php bin/console doctrine:migrations:migrate -n`.
+  4. `KERMESFERA_INTEGRATION_DATABASE_URL=<url> DATABASE_SERVER_VERSION=10.11.14-MariaDB php vendor/bin/phpunit`
+     (no `composer test`: falla como root). Para levantar la app (capturas), `COMPOSER_ALLOW_SUPERUSER=1
+     composer install` genera `vendor/autoload_runtime.php`, y un `backend/.env` local (ignorado por git).
+  5. Arrancar el kernel regenera `backend/config/reference.php`: `git checkout` antes de commitear.
+  Las credenciales reales nunca se versionan; las de la base desechable no salen del contenedor.
 
 **Why:** perdimos varios intentos por tratar el 403 como error de red o de cuenta. **How to apply:** ante un 403,
 no reintentar; revisar la instalación de la app y probar `create_branch`. Ver [[project-protocolo-memoria]].

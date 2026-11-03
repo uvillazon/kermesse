@@ -43,12 +43,31 @@ final readonly class LoginController
             throw new UnauthorizedHttpException('Bearer', 'Contraseña incorrecta.');
         }
 
-        // Consultar membresía de organización
-        $orgMembership = $this->connection->fetchAssociative(
-            'SELECT access_type FROM organization_memberships WHERE user_id = ? AND status = ? LIMIT 1',
-            [$user['id'], 'active']
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+
+        // Organizaciones a las que el usuario pertenece hoy. El frontend toma de aquí la organización
+        // activa en vez de usar un id fijo. La vigencia sigue OrganizationMembership::isActiveAt().
+        $nowSql = $now->format('Y-m-d H:i:s');
+        $organizations = array_map(
+            static fn (array $row): array => [
+                'id' => (string) $row['id'],
+                'name' => (string) $row['name'],
+                'slug' => (string) $row['slug'],
+                'access' => (string) $row['access_type'],
+            ],
+            $this->connection->fetchAllAssociative(
+                'SELECT o.id, o.name, o.slug, om.access_type
+                 FROM organization_memberships om
+                 JOIN organizations o ON o.id = om.organization_id
+                 WHERE om.user_id = ? AND om.status = ? AND o.status = ?
+                   AND (om.valid_from IS NULL OR om.valid_from <= ?)
+                   AND (om.valid_until IS NULL OR om.valid_until >= ?)
+                 ORDER BY o.name, o.id',
+                [$user['id'], 'active', 'active', $nowSql, $nowSql]
+            )
         );
-        $orgAccess = false !== $orgMembership ? (string) $orgMembership['access_type'] : 'collaborator';
+        // Compatibilidad: `orgAccess` es el acceso en la primera organización.
+        $orgAccess = $organizations[0]['access'] ?? 'collaborator';
 
         // Consultar roles en eventos
         $roleRows = $this->connection->fetchAllAssociative(
@@ -60,7 +79,6 @@ final readonly class LoginController
         );
         $roles = array_values(array_unique(array_map(static fn (array $r): string => (string) $r['code'], $roleRows)));
 
-        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $token = $this->tokens->issue(
             $user['id'],
             $now,
@@ -81,6 +99,7 @@ final readonly class LoginController
                 'name' => $user['display_name'],
                 'orgAccess' => $orgAccess,
                 'roles' => $roles,
+                'organizations' => $organizations,
             ],
         ]);
     }

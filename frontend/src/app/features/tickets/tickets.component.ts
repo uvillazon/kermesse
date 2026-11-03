@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,8 +6,10 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { EventContextService } from '../../core/services/event-context.service';
-import { COURSE_ASSIGNMENTS } from '../../core/mock/mock-data';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 type Tab = 'redeem' | 'list' | 'courses';
 
@@ -59,14 +61,15 @@ export interface ApiTicket {
 @Component({
   selector: 'app-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule],
+  imports: [FechaPipe, CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow"><i class="pi pi-qrcode"></i> Operación en puesto &bull; Backend MariaDB</span>
-          <h1>Tickets y control de canjes</h1>
-          <p>Validación atómica de vouchers QR con bloqueo de concurrencia e historial auditable por ítem.</p>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
+          <h1>Tickets y canjes</h1>
+          <p>Escanea el ticket, entrega los productos y lleva el control por curso.</p>
         </div>
         <div class="segmented">
           <button [class.active]="tab() === 'redeem'" (click)="tab.set('redeem')">
@@ -82,7 +85,7 @@ export interface ApiTicket {
       </div>
 
       <!-- KPIs rápidos de Tickets -->
-      <div class="kpi-grid">
+      <div class="kpi-grid ticket-kpis">
         <div class="kpi">
           <div class="kpi-label">Tickets emitidos</div>
           <div class="kpi-value">{{ tickets().length }}</div>
@@ -96,7 +99,7 @@ export interface ApiTicket {
         <div class="kpi">
           <div class="kpi-label">Ítems ya entregados</div>
           <div class="kpi-value">{{ redeemedItemsCount() }} / {{ totalItemsCount() }}</div>
-          <div class="kpi-foot">Control de canje único en MariaDB</div>
+          <div class="kpi-foot">Cada producto se entrega una sola vez</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Canjes completados</div>
@@ -147,7 +150,7 @@ export interface ApiTicket {
               </div>
 
               <div class="quick-picks">
-                <small>Tickets reales en MariaDB (clic para probar):</small>
+                <small>Tickets recientes (toca uno para abrirlo):</small>
                 <div class="chips">
                   @for (t of tickets().slice(0, 6); track t.id) {
                     <button
@@ -186,7 +189,7 @@ export interface ApiTicket {
                       <span [class]="'pill ' + getStatusPillClass(t.status)">
                         {{ getStatusLabel(t.status) }}
                       </span>
-                      <div class="money mt-1">Bs {{ t.total }}</div>
+                      <div class="money mt-1">Bs {{ t.total | number:'1.2-2' }}</div>
                     </div>
                   </div>
 
@@ -280,7 +283,7 @@ export interface ApiTicket {
                           <i class="pi pi-history"></i>
                           <div>
                             <b>{{ r.quantity }} × {{ r.product_name }}</b>
-                            <small class="muted">Entregado por {{ r.redeemed_by_name }} &bull; {{ r.redeemed_at | date:'short' }}</small>
+                            <small class="muted">Entregado por {{ r.redeemed_by_name }} &bull; {{ r.redeemed_at | fecha }}</small>
                           </div>
                         </div>
                       }
@@ -368,6 +371,7 @@ export interface ApiTicket {
             </div>
 
             <p-table
+          class="kf-stack"
               [value]="filteredTickets()"
               [paginator]="true"
               [rows]="5"
@@ -390,33 +394,33 @@ export interface ApiTicket {
               </ng-template>
               <ng-template #body let-t>
                 <tr>
-                  <td>
+                  <td data-label="N° Ticket / QR">
                     <b class="mono text-primary">{{ t.ticket_number }}</b>
-                    <small class="block muted">{{ t.issued_at | date:'short' }}</small>
+                    <small class="block muted">{{ t.issued_at | fecha }}</small>
                   </td>
-                  <td>
+                  <td data-label="Comprador">
                     <b>{{ t.buyer_name || 'Venta rápida' }}</b>
                     <small class="block muted">{{ t.buyer_email }}</small>
                   </td>
-                  <td>{{ t.items_summary }}</td>
-                  <td>
+                  <td data-label="Productos acreditados" data-wide>{{ t.items_summary }}</td>
+                  <td data-label="Medio">
                     <span class="pill gray">
                       {{ t.payment_method === 'cash' ? 'Efectivo' : 'QR Banco' }}
                     </span>
                   </td>
-                  <td class="money">Bs {{ t.total }}</td>
-                  <td style="min-width: 140px;">
+                  <td data-label="Total" class="money">Bs {{ t.total | number:'1.2-2' }}</td>
+                  <td data-label="Progreso de canje" data-wide style="min-width: 140px;">
                     <small>{{ t.redeemed_quantity }} / {{ t.total_quantity }} entregados</small>
                     <div class="bar">
                       <i [style.width.%]="t.total_quantity ? (t.redeemed_quantity / t.total_quantity) * 100 : 0"></i>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     <span [class]="'pill ' + getStatusPillClass(t.status)">
                       {{ getStatusLabel(t.status) }}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="">
                     <p-button
                       size="small"
                       [label]="t.status === 'redeemed' ? 'Ver detalle' : 'Canjear'"
@@ -484,6 +488,7 @@ export interface ApiTicket {
             </div>
 
             <p-table
+          class="kf-stack"
               [value]="filteredCourses()"
               [paginator]="true"
               [rows]="5"
@@ -505,33 +510,33 @@ export interface ApiTicket {
               </ng-template>
               <ng-template #body let-c>
                 <tr>
-                  <td>
+                  <td data-label="Curso / Delegado">
                     <b>{{ c.course }}</b>
                     @if (c.delegate) {
                       <small class="block muted">{{ c.delegate }}</small>
                     }
                   </td>
-                  <td>
+                  <td data-label="Producto y Puesto">
                     <b>{{ c.product || 'Talonario general' }}</b>
                     @if (c.stand) {
                       <small class="block muted">{{ c.stand }}</small>
                     }
                   </td>
-                  <td class="mono">{{ c.assigned || c.tickets }}</td>
-                  <td class="mono"><b>{{ c.delivered }}</b></td>
-                  <td class="mono">{{ c.returned || 0 }}</td>
-                  <td style="min-width: 165px;">
+                  <td data-label="Asignados" class="mono">{{ c.assigned || c.tickets }}</td>
+                  <td data-label="Entregados" class="mono"><b>{{ c.delivered }}</b></td>
+                  <td data-label="Devueltos" class="mono">{{ c.returned || 0 }}</td>
+                  <td data-label="Avance" data-wide style="min-width: 165px;">
                     <small>{{ (((c.delivered + (c.returned || 0)) / (c.assigned || c.tickets)) * 100) | number:'1.0-0' }}% conciliado</small>
                     <div class="bar">
                       <i [style.width.%]="((c.delivered + (c.returned || 0)) / (c.assigned || c.tickets)) * 100"></i>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     <span class="pill" [class.green]="(c.delivered + (c.returned || 0)) >= (c.assigned || c.tickets)" [class.yellow]="(c.delivered + (c.returned || 0)) < (c.assigned || c.tickets)">
                       {{ (c.delivered + (c.returned || 0)) >= (c.assigned || c.tickets) ? 'Conciliado' : (c.remaining ?? ((c.assigned || c.tickets) - c.delivered)) + ' pend.' }}
                     </span>
                   </td>
-                  <td style="text-align: right">
+                  <td data-label="" style="text-align: right">
                     @if (c.id && (c.remaining ?? 0) > 0) {
                       <div class="t-item-actions" style="justify-content: flex-end">
                         <p-button
@@ -747,6 +752,12 @@ export interface ApiTicket {
       i { color: var(--kf-primary); }
       div { display: flex; flex-direction: column; }
     }
+    /* Celular: primero el lector y la entrega; las cifras van al final. */
+    @media (max-width: 700px) {
+      .ticket-kpis { order: 1; }
+      .scan-box { padding: .75rem; font-size: .8rem; }
+      .scan-box > i { font-size: 1.4rem; }
+    }
   `],
 })
 export class TicketsComponent {
@@ -770,7 +781,10 @@ export class TicketsComponent {
   protected readonly standFilter = signal('all');
 
   // Filtros y búsqueda rápida para Grid de Cursos
-  protected readonly courses = signal<any[]>(COURSE_ASSIGNMENTS);
+  protected readonly courses = signal<any[]>([]);
+  private readonly ticketsError = signal<string | null>(null);
+  private readonly coursesError = signal<string | null>(null);
+  protected readonly loadError = computed(() => this.ticketsError() ?? this.coursesError());
   protected readonly courseSearch = signal('');
   protected readonly courseLevelFilter = signal('all');
   protected readonly courseStatusFilter = signal('all');
@@ -844,27 +858,36 @@ export class TicketsComponent {
   });
 
   constructor() {
-    effect(() => {
-      const ev = this.ctx.active();
-      if (ev?.id) {
-        this.loadTickets();
-        this.loadCourseAllocations();
-      }
+    onActiveEventChange(() => {
+      // Los tickets y la selección pertenecen al evento anterior: se descartan.
+      this.tickets.set([]);
+      this.courses.set([]);
+      this.selectedTicketId.set(null);
+      this.feedbackMessage.set(null);
+      this.errorMessage.set(null);
+      this.reload();
     });
+  }
+
+  reload(): void {
+    this.loadTickets();
+    this.loadCourseAllocations();
   }
 
   async loadCourseAllocations(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.coursesError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: any[] }>(`/organizations/${orgId}/events/${eventId}/course-allocations`)
       );
-      if (res?.data && res.data.length > 0) {
-        this.courses.set(res.data);
-      }
+      if (this.ctx.isStale(eventId)) return;
+      this.courses.set(res?.data ?? []);
     } catch (err) {
-      console.warn('[TicketsComponent] Usando cursos iniciales:', err);
+      if (this.ctx.isStale(eventId)) return;
+      this.courses.set([]);
+      this.coursesError.set(describeLoadError(err, 'No se pudieron cargar las asignaciones por curso.'));
     }
   }
 
@@ -874,7 +897,7 @@ export class TicketsComponent {
     this.errorMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
 
     try {
       await firstValueFrom(
@@ -890,8 +913,8 @@ export class TicketsComponent {
       );
       this.feedbackMessage.set(
         action === 'deliver'
-          ? 'Se registró +1 unidad entregada en la asignación del curso en MariaDB.'
-          : 'Se registró +1 unidad devuelta en la asignación del curso en MariaDB.'
+          ? 'Se registró 1 unidad entregada al curso.'
+          : 'Se registró 1 unidad devuelta por el curso.'
       );
       await this.loadCourseAllocations();
     } catch (err: unknown) {
@@ -906,19 +929,23 @@ export class TicketsComponent {
 
   async loadTickets(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.ticketsError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiTicket[] }>(`/organizations/${orgId}/events/${eventId}/tickets`)
       );
-      if (res?.data) {
-        this.tickets.set(res.data);
-        if (!this.selectedTicketId() && res.data.length > 0) {
-          this.selectedTicketId.set(res.data[0].id);
-        }
+      if (this.ctx.isStale(eventId)) return;
+      const list = res?.data ?? [];
+      this.tickets.set(list);
+      if (!list.some((t) => t.id === this.selectedTicketId())) {
+        this.selectedTicketId.set(list[0]?.id ?? null);
       }
     } catch (err) {
-      console.warn('[TicketsComponent] Error cargando tickets de la API:', err);
+      if (this.ctx.isStale(eventId)) return;
+      this.tickets.set([]);
+      this.selectedTicketId.set(null);
+      this.ticketsError.set(describeLoadError(err, 'No se pudieron cargar los tickets del evento.'));
     }
   }
 
@@ -980,7 +1007,7 @@ export class TicketsComponent {
     this.errorMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     const idempotencyKey = `redeem-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
     try {
@@ -1001,7 +1028,7 @@ export class TicketsComponent {
 
       if (res?.data) {
         this.feedbackMessage.set(
-          `Canje registrado en MariaDB para ${res.data.ticket_number} (${res.data.redeemed_quantity}/${res.data.total_quantity} entregados).`
+          `Entrega registrada para ${res.data.ticket_number} (${res.data.redeemed_quantity}/${res.data.total_quantity} entregados).`
         );
         await this.loadTickets();
       }
