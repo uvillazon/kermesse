@@ -57,6 +57,8 @@ final readonly class ListInvitationsController
                 'email' => (string) $r['email_normalized'],
                 'roles' => $roles,
                 'status' => $status,
+                // `expires_at` en ISO 8601 (UTC) para que el cliente lo muestre en su idioma y zona horaria.
+                'expires_at' => $expiresAt->format(\DATE_ATOM),
                 'expires' => $expiresAt->format('d M Y H:i'),
                 'invited_by_name' => (string) ($r['invited_by_name'] ?? 'Administrador'),
                 'created_at' => (string) $r['created_at'],

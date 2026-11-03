@@ -103,7 +103,10 @@ final readonly class CreateOrganizationEventController
 
                     $eventId = $this->identifiers->generate();
                     $nowStr = $occurredAt->format('Y-m-d H:i:s');
-                    $startsAt = $startsAtRaw ? (new \DateTimeImmutable($startsAtRaw))->format('Y-m-d H:i:s') : $nowStr;
+                    // Se guarda en UTC, como el resto de fechas del sistema.
+                    $startsAt = $startsAtRaw
+                        ? (new \DateTimeImmutable($startsAtRaw, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s')
+                        : $nowStr;
 
                     $this->connection->executeStatement(
                         'INSERT INTO events (
@@ -181,7 +184,8 @@ final readonly class CreateOrganizationEventController
                             'slug' => $slug,
                             'name' => $name,
                             'status' => 'draft',
-                            'date' => (new \DateTimeImmutable($startsAt))->format('d M Y'),
+                            'starts_at' => (new \DateTimeImmutable($startsAt, new \DateTimeZone('UTC')))->format(\DATE_ATOM),
+                            'date' => (new \DateTimeImmutable($startsAt, new \DateTimeZone('UTC')))->format('d M Y'),
                             'stands' => 0,
                         ],
                     ]);

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,8 +6,10 @@ import { Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
-import { EventContextService } from '../../core/services/event-context.service';
-import { EXPENSES } from '../../core/mock/mock-data';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
 
 interface HomeProduct {
   id: string;
@@ -50,14 +52,15 @@ interface HomeExpense {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe, RouterModule, ButtonModule, TableModule],
+  imports: [FechaPipe, CommonModule, FormsModule, DecimalPipe, RouterModule, ButtonModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="loadData()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow">Panel del evento &bull; {{ ctx.active().date }}</span>
-          <h1>{{ ctx.active().name }}</h1>
-          <p>Resumen operativo en tiempo real conectado a MariaDB: ventas, pagos QR, tickets y recaudación por puesto.</p>
+          <span class="eyebrow">{{ (ctx.active()?.starts_at | fecha:"EEEE d 'de' MMMM 'de' y") || 'Evento sin fecha' }}</span>
+          <h1>{{ ctx.active()?.name }}</h1>
+          <p>Cómo va el evento: ventas, pagos por revisar, tickets y recaudación por puesto.</p>
         </div>
         <div class="page-actions">
           <p-button (onClick)="go('/sales')" label="Nueva venta" icon="pi pi-plus" [disabled]="ctx.readOnly()" />
@@ -70,7 +73,7 @@ interface HomeExpense {
         <div class="kpi">
           <div class="kpi-label">Recaudación acumulada</div>
           <div class="kpi-value">Bs {{ confirmedIncome() | number:'1.2-2' }}</div>
-          <div class="kpi-foot">Ventas del catálogo en MariaDB</div>
+          <div class="kpi-foot">Ventas confirmadas</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Pagos por verificar</div>
@@ -85,7 +88,7 @@ interface HomeExpense {
         <div class="kpi">
           <div class="kpi-label">Gastos registrados</div>
           <div class="kpi-value">Bs {{ expensesTotal() | number:'1.2-2' }}</div>
-          <div class="kpi-foot">{{ expenses().length }} conceptos en MariaDB</div>
+          <div class="kpi-foot">{{ expenses().length }} conceptos</div>
         </div>
       </div>
 
@@ -94,7 +97,7 @@ interface HomeExpense {
           <div class="panel-head">
             <div>
               <h2><i class="pi pi-shopping-bag"></i> Ventas registradas en vivo</h2>
-              <small class="muted">Transacciones reales desde MariaDB</small>
+              <small class="muted">Las últimas ventas del evento</small>
             </div>
             <a routerLink="/sales" class="link-more">Ir al POS →</a>
           </div>
@@ -142,9 +145,9 @@ interface HomeExpense {
             [rowsPerPageOptions]="[5, 10]"
             [showCurrentPageReport]="true"
             currentPageReportTemplate="{first}-{last} de {totalRecords} ventas"
-            styleClass="p-datatable-sm"
+            styleClass="p-datatable-sm" class="kf-stack"
           >
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <tr>
                 <th>Ticket</th>
                 <th>Comprador</th>
@@ -153,30 +156,30 @@ interface HomeExpense {
                 <th>Estado</th>
               </tr>
             </ng-template>
-            <ng-template pTemplate="body" let-s>
+            <ng-template #body let-s>
               <tr>
-                <td>
+                <td data-label="Ticket">
                   <b class="mono">{{ s.ticket?.ticket_number || (s.id | slice:0:8) }}</b><br />
-                  <small class="muted">{{ s.created_at | date:'shortTime' }} &bull; {{ s.operator_name }}</small>
+                  <small class="muted">{{ s.created_at | fecha:'HH:mm' }} &bull; {{ s.operator_name }}</small>
                 </td>
-                <td>
+                <td data-label="Comprador">
                   <b>{{ s.buyer_name || 'Comprador' }}</b><br />
                   <small class="muted">{{ s.buyer_email }}</small>
                 </td>
-                <td>
+                <td data-label="Medio">
                   <span class="pill" [class.blue]="s.payment.method === 'cash'" [class.cyan]="s.payment.method !== 'cash'">
                     {{ s.payment.method === 'cash' ? 'Efectivo' : 'QR Banco' }}
                   </span>
                 </td>
-                <td style="text-align: right" class="money"><b>Bs {{ s.total }}</b></td>
-                <td>
+                <td data-label="Total" style="text-align: right" class="money"><b>Bs {{ s.total | number:'1.2-2' }}</b></td>
+                <td data-label="Estado">
                   <span class="pill" [class.green]="s.status === 'confirmed'" [class.yellow]="s.status === 'pending_payment'" [class.red]="s.status === 'cancelled'">
                     {{ s.status === 'confirmed' ? 'Confirmado' : (s.status === 'pending_payment' ? 'Por verificar' : 'Anulado') }}
                   </span>
                 </td>
               </tr>
             </ng-template>
-            <ng-template pTemplate="emptymessage">
+            <ng-template #emptymessage>
               <tr>
                 <td colspan="5">
                   <div class="empty-grid-state">
@@ -207,7 +210,7 @@ interface HomeExpense {
                 <div class="bar"><i [style.width.%]="st.pct"></i></div>
               </div>
             } @empty {
-              <p class="muted">Cargando puestos...</p>
+              <p class="muted">Todavía no hay ventas registradas por puesto.</p>
             }
           </div>
         </section>
@@ -222,14 +225,15 @@ interface HomeExpense {
     .link-more:hover { text-decoration: underline; }
   `],
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   protected readonly ctx = inject(EventContextService);
 
   protected readonly products = signal<HomeProduct[]>([]);
   protected readonly sales = signal<HomeSale[]>([]);
-  protected readonly expenses = signal<HomeExpense[]>(EXPENSES);
+  protected readonly expenses = signal<HomeExpense[]>([]);
+  protected readonly loadError = signal<string | null>(null);
 
   // Filtros del grid de ventas en Home
   protected readonly saleSearch = signal('');
@@ -281,24 +285,36 @@ export class HomeComponent implements OnInit {
     return rows.map((r) => ({ ...r, pct: Math.round((r.amount / max) * 100) }));
   });
 
-  ngOnInit(): void {
-    this.loadData();
+  constructor() {
+    onActiveEventChange(() => {
+      // Al cambiar de evento se vacía primero: no mostrar cifras del evento anterior bajo el nuevo título.
+      this.products.set([]);
+      this.sales.set([]);
+      this.expenses.set([]);
+      this.loadData();
+    });
   }
 
   async loadData(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.loadError.set(null);
     try {
       const [prodRes, salesRes, expRes] = await Promise.all([
         firstValueFrom(this.http.get<{ data: HomeProduct[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products`)),
         firstValueFrom(this.http.get<{ data: HomeSale[] }>(`/organizations/${orgId}/events/${eventId}/sales`)),
         firstValueFrom(this.http.get<{ data: HomeExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
       ]);
-      if (prodRes?.data) this.products.set(prodRes.data);
-      if (salesRes?.data) this.sales.set(salesRes.data);
-      if (expRes?.data && expRes.data.length > 0) this.expenses.set(expRes.data);
+      if (this.ctx.isStale(eventId)) return;
+      this.products.set(prodRes?.data ?? []);
+      this.sales.set(salesRes?.data ?? []);
+      this.expenses.set(expRes?.data ?? []);
     } catch (err) {
-      console.warn('[HomeComponent] Error cargando datos del backend:', err);
+      if (this.ctx.isStale(eventId)) return;
+      this.products.set([]);
+      this.sales.set([]);
+      this.expenses.set([]);
+      this.loadError.set(describeLoadError(err, 'No se pudo cargar el panel del evento.'));
     }
   }
 

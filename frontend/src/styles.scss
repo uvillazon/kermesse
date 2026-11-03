@@ -45,29 +45,36 @@ a { color: inherit; text-decoration: none; }
 }
 
 .page-header {
+  /* Encabezado compacto: sin tarjeta, título y acciones en una línea; el contenido empieza enseguida. */
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
   flex-wrap: wrap;
-  background: var(--kf-surface);
-  padding: 1.25rem 1.5rem;
-  border-radius: 16px;
-  border: 1px solid var(--kf-line);
-  box-shadow: var(--kf-shadow-sm);
+  padding: 0 0 0.9rem;
+  border-bottom: 1px solid var(--kf-line);
+
+  > div:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
 
   h1 {
-    font-size: 1.55rem;
+    font-size: 1.4rem;
+    line-height: 1.2;
     font-weight: 800;
     color: var(--kf-primary);
-    margin: 0.2rem 0 0.25rem;
+    margin: 0;
     letter-spacing: -0.02em;
+    text-wrap: balance;
   }
 
   p {
     margin: 0;
     color: var(--kf-muted);
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    max-width: 65ch;
   }
 }
 
@@ -79,11 +86,11 @@ a { color: inherit; text-decoration: none; }
 }
 
 .eyebrow {
-  color: var(--kf-coral);
-  font-weight: 800;
+  color: var(--kf-muted);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 0.71rem;
+  font-size: 0.7rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -436,4 +443,121 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 1000px) {
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .grid-search { max-width: 100%; }
+}
+
+/* ---------- Celular ----------
+   En el evento se vende y se canjea desde el celular: menos desplazamiento, cifras en dos columnas
+   y botones de al menos 44 px de alto. */
+@media (max-width: 600px) {
+  .page { gap: 1rem; }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .kpi {
+    padding: 0.8rem 0.85rem;
+    border-radius: 12px;
+    .kpi-label { font-size: 0.66rem; letter-spacing: 0.03em; }
+    .kpi-value { font-size: 1.2rem; margin-top: 0.25rem; overflow-wrap: anywhere; }
+    .kpi-foot { font-size: 0.7rem; }
+  }
+  .page-actions { width: 100%; }
+  .p-button { min-height: 44px; }
+  /* Las tablas se desplazan dentro de su panel; los códigos no se parten en varias líneas. */
+  .p-datatable td .mono, .p-datatable td.mono { white-space: nowrap; }
+
+}
+
+@media (max-width: 700px) {
+  /* Barra fija inferior con la acción principal (p. ej. "Cobrar" en Ventas). */
+  .mobile-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    padding: 0.7rem max(16px, env(safe-area-inset-right, 0px)) calc(0.7rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    background: var(--kf-primary);
+    color: #fff;
+    box-shadow: 0 -6px 18px rgba(6, 59, 115, 0.25);
+
+    .money { color: var(--kf-accent); }
+
+    button {
+      min-height: 44px;
+      padding: 0 1.1rem;
+      border: 0;
+      border-radius: 10px;
+      background: var(--kf-accent);
+      color: var(--kf-primary-dark);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+  }
+}
+
+/* Fuera del celular la barra no se muestra: el pedido ya está a la vista. */
+@media (min-width: 701px) {
+  .mobile-action-bar { display: none; }
+}
+
+/* ---------- Tablas como tarjetas en celular ----------
+   Toda p-table con styleClass "kf-stack" y celdas con data-label se ve como una lista de tarjetas:
+   la primera celda es el título, el resto son pares etiqueta/valor en dos columnas.
+   data-wide ocupa todo el ancho; data-label="" (acciones) va al final sin etiqueta. */
+@media (max-width: 700px) {
+  .kf-stack {
+    .p-datatable-thead { display: none; }
+    .p-datatable-table-container { overflow: visible !important; }
+    .p-datatable-table { width: 100%; min-width: 0 !important; table-layout: auto; }
+
+    .p-datatable-tbody > tr {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem 1rem;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--kf-line);
+    }
+
+    .p-datatable-tbody > tr > td {
+      display: block;
+      min-width: 0;
+      padding: 0 !important;
+      border: 0 !important;
+      text-align: left !important;
+      overflow-wrap: anywhere;
+    }
+
+    td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.15rem;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--kf-muted);
+    }
+
+    td:first-child,
+    td[data-wide],
+    td[data-label=''],
+    td:not([data-label]) {
+      grid-column: 1 / -1;
+    }
+
+    /* Primero los datos cortos de a pares, luego las celdas anchas y al final las acciones. */
+    td[data-wide] { order: 1; }
+    td[data-label=''] { order: 2; }
+    td:first-child { font-size: 0.95rem; order: 0; }
+    td:first-child::before,
+    td[data-label='']::before { display: none; }
+    td[data-label=''] { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    td .mono { white-space: normal; }
+  }
 }

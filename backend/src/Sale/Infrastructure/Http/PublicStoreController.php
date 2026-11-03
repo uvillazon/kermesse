@@ -60,6 +60,9 @@ final readonly class PublicStoreController
                 'slug' => (string) $event['slug'],
                 'name' => (string) $event['name'],
                 'status' => (string) $event['status'],
+                'starts_at' => null === $event['starts_at']
+                    ? null
+                    : (new \DateTimeImmutable((string) $event['starts_at'], new \DateTimeZone('UTC')))->format(\DATE_ATOM),
                 'date' => null === $event['starts_at']
                     ? null
                     : (new \DateTimeImmutable((string) $event['starts_at']))->format('d M Y'),

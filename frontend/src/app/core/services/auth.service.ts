@@ -2,14 +2,25 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { EventRole } from '../mock/mock-data';
+import { EventRole } from '../models/domain';
+
+export type OrgAccess = 'owner' | 'administrator' | 'collaborator';
+
+/** Organización vigente del usuario, tal como la devuelve `POST /auth/login`. */
+export interface AuthOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  access: OrgAccess;
+}
 
 export interface AuthUser {
   id: string; // UUID v4
   name: string;
   email: string;
-  orgAccess: 'owner' | 'administrator' | 'collaborator';
+  orgAccess: OrgAccess;
   roles: EventRole[];
+  organizations: AuthOrganization[];
   avatarInitials: string;
 }
 
@@ -26,13 +37,16 @@ interface BackendLoginResponse {
     id: string;
     email: string;
     name: string;
-    orgAccess: 'owner' | 'administrator' | 'collaborator';
+    orgAccess: OrgAccess;
     roles: EventRole[];
+    organizations: AuthOrganization[];
   };
 }
 
 const STORAGE_KEY_TOKEN = 'kermesfera_auth_token';
 const STORAGE_KEY_USER = 'kermesfera_auth_user';
+/** Organización elegida por este navegador; solo una preferencia, se valida contra el login. */
+const STORAGE_KEY_ORG = 'kermesfera_active_org';
 
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
@@ -42,6 +56,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
       email: 'direccion@saintandrews.edu.bo',
       orgAccess: 'owner',
       roles: ['EVENT_MANAGER', 'FINANCE_REVIEWER'],
+      organizations: [],
       avatarInitials: 'CG',
     },
     password: 'password123',
@@ -55,6 +70,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
       email: 'maria.rojas@gmail.com',
       orgAccess: 'collaborator',
       roles: ['SALES_OPERATOR', 'TICKET_OPERATOR'],
+      organizations: [],
       avatarInitials: 'MR',
     },
     password: 'password123',
@@ -68,6 +84,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
       email: 'psoliz@saintandrews.edu.bo',
       orgAccess: 'collaborator',
       roles: ['PAYMENT_REVIEWER'],
+      organizations: [],
       avatarInitials: 'PS',
     },
     password: 'password123',
@@ -86,8 +103,18 @@ export class AuthService {
   private readonly userSignal = signal<AuthUser | null>(this.loadStoredUser());
   private readonly tokenSignal = signal<string | null>(this.loadStoredToken());
   private readonly backendConnectedSignal = signal<boolean>(false);
+  private readonly preferredOrgId = signal<string | null>(this.readStorage(STORAGE_KEY_ORG));
 
   readonly currentUser = this.userSignal.asReadonly();
+  readonly organizations = computed(() => this.userSignal()?.organizations ?? []);
+  /**
+   * Organización activa: la preferida si el usuario sigue perteneciendo a ella, si no la primera.
+   * `null` si el usuario no pertenece a ninguna organización vigente.
+   */
+  readonly activeOrganization = computed<AuthOrganization | null>(() => {
+    const list = this.organizations();
+    return list.find((o) => o.id === this.preferredOrgId()) ?? list[0] ?? null;
+  });
   readonly token = this.tokenSignal.asReadonly();
   readonly isAuthenticated = computed(() => !!this.userSignal() && !!this.tokenSignal());
   readonly isBackendConnected = this.backendConnectedSignal.asReadonly();
@@ -127,6 +154,7 @@ export class AuthService {
           email: res.user.email,
           orgAccess: res.user.orgAccess,
           roles: res.user.roles,
+          organizations: Array.isArray(res.user.organizations) ? res.user.organizations : [],
           avatarInitials: this.extractInitials(res.user.name),
         };
         this.setSession(authUser, res.token);
@@ -143,6 +171,14 @@ export class AuthService {
 
   async loginWithDemo(account: DemoAccount): Promise<void> {
     await this.login(account.user.email, account.password);
+  }
+
+  selectOrganization(id: string): void {
+    if (!this.organizations().some((o) => o.id === id)) {
+      return;
+    }
+    this.preferredOrgId.set(id);
+    this.writeStorage(STORAGE_KEY_ORG, id);
   }
 
   logout(): void {
@@ -179,9 +215,32 @@ export class AuthService {
     const raw = localStorage.getItem(STORAGE_KEY_USER);
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as AuthUser;
+      const user = JSON.parse(raw) as AuthUser;
+      // Sesiones guardadas antes de que el login devolviera organizaciones: pedir login de nuevo.
+      if (!Array.isArray(user?.organizations)) {
+        localStorage.removeItem(STORAGE_KEY_TOKEN);
+        localStorage.removeItem(STORAGE_KEY_USER);
+        return null;
+      }
+      return user;
     } catch {
       return null;
+    }
+  }
+
+  private readStorage(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  private writeStorage(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Sin almacenamiento disponible: la preferencia dura solo esta sesión.
     }
   }
 

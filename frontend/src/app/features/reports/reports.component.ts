@@ -1,5 +1,5 @@
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
-import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
+import { Component, LOCALE_ID, computed, inject, signal } from '@angular/core';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -8,8 +8,11 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TableModule } from 'primeng/table';
-import { EventContextService } from '../../core/services/event-context.service';
-import { EXPENSES } from '../../core/mock/mock-data';
+import { EventContextService, onActiveEventChange } from '../../core/services/event-context.service';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
+import { FechaPipe } from '../../core/ui/fecha.pipe';
+import { AuditEntry, auditAreaLabel, describeAudit } from './audit-description';
 
 interface ApiProductReport {
   id: string;
@@ -32,39 +35,30 @@ interface ApiExpense {
   occurred_at?: string;
 }
 
-interface ApiAuditLog {
-  id: string;
-  action: string;
-  aggregate_type: string;
-  aggregate_id: string;
-  request_id: string;
-  actor_name: string;
-  actor_email: string;
-  metadata: Record<string, any>;
-  created_at: string;
-}
+type ApiAuditLog = AuditEntry;
 
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [
+  imports: [FechaPipe, 
     CommonModule,
     FormsModule,
     DecimalPipe,
-    DatePipe,
     ButtonModule,
     DialogModule,
     InputTextModule,
     InputNumberModule,
     TableModule,
+    LoadErrorBannerComponent,
   ],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="loadData()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow">Administración &bull; Finanzas y Auditoría en MariaDB</span>
+          <span class="eyebrow">{{ ctx.active()?.name }}</span>
           <h1>Reportes, balance y cierre</h1>
-          <p>Resultado consolidado del evento con ingresos, gastos y bitácora de auditoría en tiempo real.</p>
+          <p>Ingresos, gastos y resultado del evento, con el historial de cambios.</p>
         </div>
         <div class="page-actions">
           <p-button label="Actualizar" icon="pi pi-refresh" severity="secondary" [outlined]="true" (onClick)="loadData()" />
@@ -96,7 +90,7 @@ interface ApiAuditLog {
         <div class="kpi">
           <div class="kpi-label">Gastos operativos</div>
           <div class="kpi-value">Bs {{ expensesTotal() | number:'1.2-2' }}</div>
-          <div class="kpi-foot">{{ expenseRows().length }} conceptos en MariaDB</div>
+          <div class="kpi-foot">{{ expenseRows().length }} conceptos</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Resultado neto</div>
@@ -116,7 +110,7 @@ interface ApiAuditLog {
           <div class="panel-head">
             <div>
               <h2><i class="pi pi-chart-bar"></i> Ingresos por puesto y producto</h2>
-              <small class="muted">Sincronizado con el inventario de MariaDB</small>
+              <small class="muted">Unidades vendidas e ingreso por producto</small>
             </div>
             <span class="grid-meta">{{ filteredProducts().length }} de {{ products().length }}</span>
           </div>
@@ -159,9 +153,9 @@ interface ApiAuditLog {
             [rowsPerPageOptions]="[5, 10, 20]"
             [showCurrentPageReport]="true"
             currentPageReportTemplate="{first}-{last} de {totalRecords} productos"
-            styleClass="p-datatable-sm"
+            styleClass="p-datatable-sm" class="kf-stack"
           >
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <tr>
                 <th>Producto</th>
                 <th>Puesto</th>
@@ -169,18 +163,18 @@ interface ApiAuditLog {
                 <th style="text-align: right">Ingreso</th>
               </tr>
             </ng-template>
-            <ng-template pTemplate="body" let-p>
+            <ng-template #body let-p>
               <tr>
-                <td>
+                <td data-label="Producto">
                   <b>{{ p.name }}</b><br />
                   <small class="mono muted">{{ p.code }} &bull; Bs {{ p.unit_price | number:'1.2-2' }}</small>
                 </td>
-                <td><span class="pill blue">{{ p.stand_name }}</span></td>
-                <td style="text-align: right" class="mono">{{ p.sold }}</td>
-                <td style="text-align: right" class="money"><b>Bs {{ p.unit_price * p.sold | number:'1.2-2' }}</b></td>
+                <td data-label="Puesto"><span class="pill blue">{{ p.stand_name }}</span></td>
+                <td data-label="Unidades" style="text-align: right" class="mono">{{ p.sold }}</td>
+                <td data-label="Ingreso" style="text-align: right" class="money"><b>Bs {{ p.unit_price * p.sold | number:'1.2-2' }}</b></td>
               </tr>
             </ng-template>
-            <ng-template pTemplate="emptymessage">
+            <ng-template #emptymessage>
               <tr>
                 <td colspan="4">
                   <div class="empty-grid-state">
@@ -198,7 +192,7 @@ interface ApiAuditLog {
           <div class="panel-head">
             <div>
               <h2><i class="pi pi-wallet"></i> Gastos del evento</h2>
-              <small class="muted">Egresos persistidos en MariaDB</small>
+              <small class="muted">Compras y pagos del evento</small>
             </div>
             <p-button
               size="small"
@@ -247,28 +241,28 @@ interface ApiAuditLog {
             [rowsPerPageOptions]="[5, 10]"
             [showCurrentPageReport]="true"
             currentPageReportTemplate="{first}-{last} de {totalRecords} gastos"
-            styleClass="p-datatable-sm"
+            styleClass="p-datatable-sm" class="kf-stack"
           >
-            <ng-template pTemplate="header">
+            <ng-template #header>
               <tr>
                 <th>Concepto</th>
                 <th>Categoría</th>
                 <th style="text-align: right">Monto</th>
               </tr>
             </ng-template>
-            <ng-template pTemplate="body" let-e>
+            <ng-template #body let-e>
               <tr>
-                <td>
+                <td data-label="Concepto">
                   <b>{{ e.concept }}</b>
                   @if (e.recorded_by_name) {
                     <br /><small class="muted">Reg. por {{ e.recorded_by_name }}</small>
                   }
                 </td>
-                <td><span class="pill gray">{{ e.category }}</span></td>
-                <td style="text-align: right" class="money"><b>Bs {{ e.amount | number:'1.2-2' }}</b></td>
+                <td data-label="Categoría"><span class="pill gray">{{ e.category }}</span></td>
+                <td data-label="Monto" style="text-align: right" class="money"><b>Bs {{ e.amount | number:'1.2-2' }}</b></td>
               </tr>
             </ng-template>
-            <ng-template pTemplate="emptymessage">
+            <ng-template #emptymessage>
               <tr>
                 <td colspan="3">
                   <div class="empty-grid-state">
@@ -282,12 +276,12 @@ interface ApiAuditLog {
         </section>
       </div>
 
-      <!-- Grid 3: Bitácora de Auditoría Transaccional (audit_logs) -->
+      <!-- Grid 3: Historial de cambios (audit_logs) -->
       <section class="panel">
         <div class="panel-head">
           <div>
-            <h2><i class="pi pi-history"></i> Bitácora de auditoría transaccional (<code>audit_logs</code>)</h2>
-            <small class="muted">Trazabilidad inmutable de ventas, canjes de tickets, revisiones de pagos, catálogo e invitaciones.</small>
+            <h2><i class="pi pi-history"></i> Historial de cambios</h2>
+            <small class="muted">Quién hizo qué y cuándo: ventas, canjes, pagos, catálogo e invitaciones. No se puede editar.</small>
           </div>
           <span class="grid-meta">{{ filteredAuditLogs().length }} de {{ auditLogs().length }} registros</span>
         </div>
@@ -297,7 +291,7 @@ interface ApiAuditLog {
             <i class="pi pi-search"></i>
             <input
               type="text"
-              placeholder="Búsqueda rápida por acción, usuario, entidad o ID..."
+              placeholder="Buscar por persona, producto, ticket..."
               [ngModel]="auditSearch()"
               (ngModelChange)="auditSearch.set($event)"
             />
@@ -310,9 +304,9 @@ interface ApiAuditLog {
           <div class="grid-filters">
             <span class="filter-label"><i class="pi pi-filter"></i> Filtros:</span>
             <select class="filter-select" [ngModel]="auditTypeFilter()" (ngModelChange)="auditTypeFilter.set($event)">
-              <option value="">Todas las entidades</option>
-              @for (tp of auditAggregateTypes(); track tp) {
-                <option [value]="tp">{{ tp }}</option>
+              <option value="">Todo</option>
+              @for (area of auditAreas(); track area) {
+                <option [value]="area">{{ area }}</option>
               }
             </select>
             @if (auditSearch() || auditTypeFilter()) {
@@ -326,38 +320,36 @@ interface ApiAuditLog {
         <p-table
           [value]="filteredAuditLogs()"
           [paginator]="true"
-          [rows]="5"
-          [rowsPerPageOptions]="[5, 10, 25]"
+          [rows]="10"
+          [rowsPerPageOptions]="[10, 25, 50]"
           [showCurrentPageReport]="true"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} eventos de auditoría"
-          styleClass="p-datatable-sm"
+          currentPageReportTemplate="{first}-{last} de {totalRecords} cambios"
+          styleClass="p-datatable-sm" class="kf-stack"
         >
-          <ng-template pTemplate="header">
+          <ng-template #header>
             <tr>
-              <th>Fecha / Hora</th>
-              <th>Acción</th>
-              <th>Entidad</th>
-              <th>Actor</th>
-              <th>Detalle de la operación</th>
+              <th style="width: 8.5rem">Cuándo</th>
+              <th style="width: 11rem">Quién</th>
+              <th>Qué pasó</th>
+              <th style="width: 7rem">Área</th>
             </tr>
           </ng-template>
-          <ng-template pTemplate="body" let-a>
+          <ng-template #body let-a>
             <tr>
-              <td><small class="mono">{{ a.created_at | date:'short' }}</small></td>
-              <td><span class="pill cyan mono">{{ a.action }}</span></td>
-              <td><span class="pill gray">{{ a.aggregate_type }}</span></td>
-              <td>
-                <b>{{ a.actor_name }}</b>
-                @if (a.actor_email) {
-                  <br /><small class="muted">{{ a.actor_email }}</small>
+              <td data-label="Cuándo"><small class="audit-when">{{ a.created_at | fecha }}</small></td>
+              <td data-label="Quién"><b>{{ a.actor_name }}</b></td>
+              <td data-label="Qué pasó" data-wide>
+                <span class="audit-what">{{ a.desc.title }}</span>
+                @if (a.desc.detail) {
+                  <small class="muted audit-detail">{{ a.desc.detail }}</small>
                 }
               </td>
-              <td><small class="mono muted">{{ formatAuditMetadata(a) }}</small></td>
+              <td data-label="Área"><span class="pill gray">{{ a.area }}</span></td>
             </tr>
           </ng-template>
-          <ng-template pTemplate="emptymessage">
+          <ng-template #emptymessage>
             <tr>
-              <td colspan="5">
+              <td colspan="4">
                 <div class="empty-grid-state">
                   <i class="pi pi-history"></i>
                   <p>No se encontraron registros de auditoría para los filtros seleccionados.</p>
@@ -377,15 +369,14 @@ interface ApiAuditLog {
             </p>
             <div class="notice warn">
               <i class="pi pi-exclamation-triangle"></i>
-              <span>Pendiente de negocio: definir qué rol puede cerrar. En el prototipo se permite para demostrar el modo consulta.</span>
+              <span>Todavía no disponible: falta definir qué rol autoriza el cierre y la API aún no lo implementa. Hasta entonces el evento no se puede cerrar desde aquí.</span>
             </div>
           </div>
           <p-button
             [label]="ctx.readOnly() ? 'Evento cerrado' : 'Cerrar evento'"
             icon="pi pi-lock"
             severity="danger"
-            [disabled]="ctx.readOnly()"
-            (onClick)="confirm.set(true)"
+            [disabled]="true"
           />
         </div>
       </section>
@@ -424,30 +415,25 @@ interface ApiAuditLog {
         <p-button label="Guardar gasto" icon="pi pi-check" [loading]="savingExpense()" (onClick)="saveExpense()" />
       </ng-template>
     </p-dialog>
-
-    <!-- Modal: Confirmar cierre -->
-    <p-dialog header="¿Cerrar el evento?" [visible]="confirm()" (visibleChange)="confirm.set($event)" [modal]="true" [style]="{ width: '440px' }" [draggable]="false">
-      <p>Vas a cerrar <b>{{ ctx.active().name }}</b>. Esta acción es <b>irreversible</b>.</p>
-      <ng-template #footer>
-        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="confirm.set(false)" />
-        <p-button label="Sí, cerrar evento" severity="danger" (onClick)="close()" />
-      </ng-template>
-    </p-dialog>
   `,
   styles: [`
     .neg { color: var(--kf-red) !important; }
+    .audit-when { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--kf-muted); }
+    .audit-what { display: block; font-weight: 600; color: var(--kf-ink); }
+    .audit-detail { display: block; margin-top: .15rem; line-height: 1.4; }
     .close .panel-body { display: flex; gap: 1.5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
     .close .panel-body > div { flex: 1; min-width: 280px; }
     .close h2 { color: var(--kf-primary); font-size: 1.05rem; margin: 0 0 .4rem; display: flex; align-items: center; gap: .4rem; }
     .native { padding: 0.6rem; border: 1px solid var(--kf-line); border-radius: 8px; font: inherit; width: 100%; }
   `],
 })
-export class ReportsComponent implements OnInit {
+export class ReportsComponent {
   private readonly http = inject(HttpClient);
   protected readonly ctx = inject(EventContextService);
 
   protected readonly products = signal<ApiProductReport[]>([]);
-  protected readonly expenseRows = signal<ApiExpense[]>(EXPENSES);
+  protected readonly expenseRows = signal<ApiExpense[]>([]);
+  protected readonly loadError = signal<string | null>(null);
   protected readonly auditLogs = signal<ApiAuditLog[]>([]);
 
   // Filtros de ingresos por producto
@@ -477,8 +463,15 @@ export class ReportsComponent implements OnInit {
     Array.from(new Set(this.expenseRows().map((e) => e.category))).sort()
   );
 
-  protected readonly auditAggregateTypes = computed(() =>
-    Array.from(new Set(this.auditLogs().map((a) => a.aggregate_type))).sort()
+  private readonly locale = inject(LOCALE_ID);
+
+  /** Historial traducido a frases: nunca se muestran códigos de acción, UUID ni JSON. */
+  protected readonly auditRows = computed(() =>
+    this.auditLogs().map((a) => ({ ...a, desc: describeAudit(a, this.locale), area: auditAreaLabel(a.aggregate_type) }))
+  );
+
+  protected readonly auditAreas = computed(() =>
+    Array.from(new Set(this.auditRows().map((a) => a.area))).sort()
   );
 
   protected readonly filteredProducts = computed(() => {
@@ -504,10 +497,10 @@ export class ReportsComponent implements OnInit {
   protected readonly filteredAuditLogs = computed(() => {
     const q = this.auditSearch().trim().toLowerCase();
     const tp = this.auditTypeFilter();
-    return this.auditLogs().filter((a) => {
-      if (tp && a.aggregate_type !== tp) return false;
+    return this.auditRows().filter((a) => {
+      if (tp && a.area !== tp) return false;
       if (q) {
-        const hay = `${a.action} ${a.aggregate_type} ${a.actor_name} ${a.actor_email} ${JSON.stringify(a.metadata)}`.toLowerCase();
+        const hay = `${a.desc.title} ${a.desc.detail ?? ''} ${a.area} ${a.actor_name} ${a.actor_email}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -535,36 +528,40 @@ export class ReportsComponent implements OnInit {
 
   protected readonly exported = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly confirm = signal(false);
 
-  ngOnInit(): void {
-    this.loadData();
+  constructor() {
+    onActiveEventChange(() => {
+      // Al cambiar de evento se vacía primero: no mostrar cifras del evento anterior bajo el nuevo título.
+      this.products.set([]);
+      this.expenseRows.set([]);
+      this.auditLogs.set([]);
+      this.exported.set(null);
+      this.errorMessage.set(null);
+      this.loadData();
+    });
   }
 
   async loadData(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.loadError.set(null);
     try {
       const [prodRes, expRes, auditRes] = await Promise.all([
         firstValueFrom(this.http.get<{ data: ApiProductReport[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products`)),
         firstValueFrom(this.http.get<{ data: ApiExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
         firstValueFrom(this.http.get<{ data: ApiAuditLog[] }>(`/organizations/${orgId}/events/${eventId}/audit-logs`)),
       ]);
-      if (prodRes?.data) this.products.set(prodRes.data);
-      if (expRes?.data && expRes.data.length > 0) this.expenseRows.set(expRes.data);
-      if (auditRes?.data) this.auditLogs.set(auditRes.data);
+      if (this.ctx.isStale(eventId)) return;
+      this.products.set(prodRes?.data ?? []);
+      this.expenseRows.set(expRes?.data ?? []);
+      this.auditLogs.set(auditRes?.data ?? []);
     } catch (err) {
-      console.warn('[ReportsComponent] Error cargando datos financieros:', err);
+      if (this.ctx.isStale(eventId)) return;
+      this.products.set([]);
+      this.expenseRows.set([]);
+      this.auditLogs.set([]);
+      this.loadError.set(describeLoadError(err, 'No se pudieron cargar los datos financieros del evento.'));
     }
-  }
-
-  formatAuditMetadata(a: ApiAuditLog): string {
-    const entries = Object.entries(a.metadata || {});
-    if (entries.length === 0) return a.aggregate_id.slice(0, 8);
-    return entries
-      .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
-      .join(' · ')
-      .slice(0, 120);
   }
 
   openExpenseDialog(): void {
@@ -584,7 +581,7 @@ export class ReportsComponent implements OnInit {
     this.savingExpense.set(true);
     this.errorMessage.set(null);
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
 
     try {
       await firstValueFrom(
@@ -603,7 +600,7 @@ export class ReportsComponent implements OnInit {
         )
       );
       this.expenseDialog.set(false);
-      this.exported.set(`Gasto "${this.newConcept}" registrado en MariaDB.`);
+      this.exported.set(`Gasto "${this.newConcept}" registrado.`);
       await this.loadData();
     } catch (err: unknown) {
       const anyErr = err as { message?: string; originalError?: { error?: { message?: string } } };
@@ -631,19 +628,14 @@ export class ReportsComponent implements OnInit {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `balance-${this.ctx.active().id.slice(0, 8)}.csv`;
+    a.download = `balance-${this.ctx.requireActive().id.slice(0, 8)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    this.exported.set('Archivo Excel/CSV descargado con los datos reales de MariaDB.');
+    this.exported.set('Archivo CSV descargado.');
   }
 
   exportPdf(): void {
     window.print();
     this.exported.set('Vista de impresión / PDF generada.');
-  }
-
-  close(): void {
-    this.ctx.closeActive();
-    this.confirm.set(false);
   }
 }
