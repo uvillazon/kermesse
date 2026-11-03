@@ -9,6 +9,8 @@ use App\Audit\Application\AuditLogWriter;
 use App\Identity\Application\Access\AccessDirectory;
 use App\Identity\Application\Access\EventAssignmentWriter;
 use App\Identity\Application\Access\InvitationAcceptanceRepository;
+use App\Identity\Application\Credential\PasswordHasher;
+use App\Identity\Application\Credential\PasswordPolicy;
 use App\Identity\Domain\EventAccessType;
 use App\Identity\Domain\EventRole;
 use App\Identity\Domain\EventStatus;
@@ -22,12 +24,23 @@ final readonly class AcceptInvitationHandler
         private EventAssignmentWriter $assignments,
         private AccessDirectory $directory,
         private AuditLogWriter $auditLog,
+        private PasswordHasher $passwords,
     ) {
     }
 
     public function handle(AcceptInvitationCommand $command): string
     {
-        return $this->transactions->execute(function () use ($command): string {
+        $passwordHash = null;
+        if (null !== $command->password) {
+            $violation = PasswordPolicy::violation($command->password);
+            if (null !== $violation) {
+                throw new AccessMutationFailed($violation);
+            }
+            // Se calcula fuera de la transacción: el hash es lento y no debe alargar los bloqueos.
+            $passwordHash = $this->passwords->hash($command->password);
+        }
+
+        return $this->transactions->execute(function () use ($command, $passwordHash): string {
             $email = strtolower(trim($command->email));
             if (false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw new AccessMutationFailed('Invitation email is invalid.');
@@ -46,6 +59,7 @@ final readonly class AcceptInvitationHandler
                 $command->newUserId,
                 $email,
                 trim($command->displayName),
+                $passwordHash,
                 $command->occurredAt,
             );
             $organizationMembershipId = $this->invitations->activateOrganizationMembership(

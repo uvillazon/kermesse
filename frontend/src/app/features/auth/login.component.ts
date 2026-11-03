@@ -90,11 +90,12 @@ import { AuthService, DEMO_ACCOUNTS, DemoAccount } from '../../core/services/aut
           />
         </form>
 
+        @if (demoList.length > 0) {
         <div class="divider">
           <span>O ingresa con un rol de demostración</span>
         </div>
 
-        <!-- Cuentas de demostración de un solo clic -->
+        <!-- Cuentas de demostración de un solo clic (solo en desarrollo) -->
         <div class="demo-accounts">
           @for (acc of demoList; track acc.user.id) {
             <button
@@ -113,6 +114,7 @@ import { AuthService, DEMO_ACCOUNTS, DemoAccount } from '../../core/services/aut
             </button>
           }
         </div>
+        }
 
         <!-- Pie con enlace a tienda pública -->
         <footer class="auth-footer">
@@ -415,8 +417,9 @@ export class LoginComponent {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly demoList = DEMO_ACCOUNTS;
-  protected email = 'direccion@saintandrews.edu.bo';
-  protected password = 'password123';
+  // Precarga la primera cuenta demo solo en desarrollo.
+  protected email = DEMO_ACCOUNTS[0]?.user.email ?? '';
+  protected password = DEMO_ACCOUNTS[0]?.password ?? '';
   protected rememberMe = true;
 
   protected readonly loading = signal(false);
@@ -450,7 +453,7 @@ export class LoginComponent {
   }
 
   forgotPassword(): void {
-    alert('En el prototipo de Kermesfera, utiliza una de las cuentas demo de acceso rápido.');
+    alert('La recuperación de contraseña aún no está disponible. Contacta a la persona responsable de tu organización.');
   }
 
   private redirectToDestination(): void {

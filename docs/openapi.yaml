@@ -256,14 +256,50 @@ paths:
           $ref: '#/components/responses/IdempotencyConflict'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+  /auth/login:
+    post:
+      tags: [Identity]
+      operationId: login
+      summary: Iniciar sesión con correo y contraseña y obtener un JWT Bearer.
+      description: >-
+        Ruta pública. Verifica la contraseña contra su hash. Correo inexistente, cuenta
+        sin contraseña, contraseña incorrecta y cuenta suspendida responden el mismo 401
+        genérico. Con límite activo aplica una cuota por IP y otra por cuenta
+        (`RATE_LIMIT_LOGIN_PER_MINUTE`).
+      security: []
+      x-implementation-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  maxLength: 254
+                password:
+                  type: string
+                  writeOnly: true
+      responses:
+        '200':
+          description: Token emitido (vigencia de una hora) y datos básicos del usuario.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /invitations/accept:
     post:
       tags: [Identity]
       operationId: acceptInvitation
       summary: Aceptar una invitación mediante su token de un solo uso.
       description: >-
-        Ruta pública. Bloquea y consume la invitación, crea o reactiva identidad,
-        membresía organizacional y acceso de evento en una sola transacción. No usa
+        Ruta pública. Bloquea y consume la invitación, crea o reactiva identidad (con su
+        contraseña), membresía organizacional y acceso de evento en una sola transacción. No usa
         Idempotency-Key: el token aleatorio es la capacidad única y no se persiste en
         texto plano; un segundo uso devuelve 422 sin repetir efectos.
       security: []
@@ -1132,6 +1168,15 @@ components:
           type: string
           minLength: 1
           maxLength: 160
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          writeOnly: true
+          description: >-
+            Obligatoria cuando la invitación crea la cuenta o la cuenta existente aún no
+            tiene contraseña. Se guarda solo su hash. Una invitación nunca reemplaza una
+            contraseña ya definida. Máximo 72 bytes; no se recortan espacios.
     AcceptInvitationResponse:
       type: object
       additionalProperties: false

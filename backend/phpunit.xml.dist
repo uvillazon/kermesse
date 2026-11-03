@@ -12,6 +12,7 @@
         <env name="KERNEL_CLASS" value="App\Kernel" />
         <env name="RATE_LIMIT_ENABLED" value="0" force="true" />
         <env name="RATE_LIMIT_DEFAULT_PER_MINUTE" value="60" force="true" />
+        <env name="RATE_LIMIT_LOGIN_PER_MINUTE" value="10" force="true" />
         <env name="IDEMPOTENCY_HEADER" value="HTTP_IDEMPOTENCY_KEY" force="true" />
         <env name="DATABASE_URL" value="mysql://invalid:invalid@127.0.0.1:3306/kermesfera_test?charset=utf8mb4" force="true" />
         <env name="DATABASE_SERVER_VERSION" value="10.4.18-MariaDB" force="true" />

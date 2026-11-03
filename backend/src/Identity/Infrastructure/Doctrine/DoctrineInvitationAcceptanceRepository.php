@@ -62,27 +62,44 @@ final readonly class DoctrineInvitationAcceptanceRepository implements Invitatio
         string $newUserId,
         string $emailNormalized,
         string $displayName,
+        ?string $passwordHash,
         \DateTimeImmutable $at,
     ): string {
+        $timestamp = $at->format('Y-m-d H:i:s');
         $row = $this->connection->fetchAssociative(
-            'SELECT id, status FROM users WHERE email_normalized = ? FOR UPDATE',
+            'SELECT id, status, password_hash FROM users WHERE email_normalized = ? FOR UPDATE',
             [$emailNormalized],
         );
         if (false !== $row) {
             if (IdentityStatus::ACTIVE->value !== $row['status']) {
                 throw new AccessMutationFailed('Existing identity is not active.');
             }
+            $userId = (string) $row['id'];
+            if (null === $row['password_hash'] || '' === $row['password_hash']) {
+                if (null === $passwordHash) {
+                    throw new AccessMutationFailed('password is required to activate the account.');
+                }
+                $this->connection->update('users', [
+                    'password_hash' => $passwordHash,
+                    'password_updated_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ], ['id' => $userId]);
+            }
 
-            return (string) $row['id'];
+            return $userId;
         }
 
-        $timestamp = $at->format('Y-m-d H:i:s');
+        if (null === $passwordHash) {
+            throw new AccessMutationFailed('password is required to create the account.');
+        }
         $this->connection->insert('users', [
             'id' => $newUserId,
             'email' => $emailNormalized,
             'email_normalized' => $emailNormalized,
             'display_name' => $displayName,
             'status' => IdentityStatus::ACTIVE->value,
+            'password_hash' => $passwordHash,
+            'password_updated_at' => $timestamp,
             'created_at' => $timestamp,
             'updated_at' => $timestamp,
         ]);

@@ -251,7 +251,7 @@ final class AssignEventAccessControllerIntegrationTest extends WebTestCase
             'email' => 'queued-invitation@example.test',
             'target_access_type' => 'operational',
             'roles' => ['SALES_OPERATOR'],
-            'expires_at' => '2026-11-01T18:00:00+00:00',
+            'expires_at' => (new \DateTimeImmutable('+1 day'))->format(DATE_ATOM),
         ];
 
         $this->requestInvitation($payload, 'create-invitation-http-key-1');
@@ -294,7 +294,7 @@ final class AssignEventAccessControllerIntegrationTest extends WebTestCase
             'email' => $email,
             'target_access_type' => 'operational',
             'roles' => ['SALES_OPERATOR'],
-            'expires_at' => '2026-11-01T18:00:00+00:00',
+            'expires_at' => (new \DateTimeImmutable('+1 day'))->format(DATE_ATOM),
         ], 'accept-invitation-fixture-key');
         self::assertResponseStatusCodeSame(202);
         $invitationId = $this->response()['data']['invitation_id'];
@@ -304,9 +304,22 @@ final class AssignEventAccessControllerIntegrationTest extends WebTestCase
             'v1',
         ))->generate($invitationId);
 
+        $this->requestAcceptance($token, $email, password: null);
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString('password is required', $this->response()['error']['message']);
+
         $this->requestAcceptance($token, $email);
         self::assertResponseStatusCodeSame(200);
         $response = $this->response();
+
+        $this->client()->request(
+            'POST',
+            '/api/v1/auth/login',
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: json_encode(['email' => $email, 'password' => 'accepted-password-1'], JSON_THROW_ON_ERROR),
+        );
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame($response['data']['user_id'], $this->response()['user']['id']);
         self::assertSame('accepted', $response['data']['status']);
         $userId = $response['data']['user_id'];
         self::assertIsString($userId);
@@ -424,17 +437,21 @@ final class AssignEventAccessControllerIntegrationTest extends WebTestCase
         );
     }
 
-    private function requestAcceptance(string $token, string $email): void
+    private function requestAcceptance(string $token, string $email, ?string $password = 'accepted-password-1'): void
     {
+        $payload = [
+            'token' => $token,
+            'email' => $email,
+            'display_name' => 'Accepted Invitation User',
+        ];
+        if (null !== $password) {
+            $payload['password'] = $password;
+        }
         $this->client()->request(
             'POST',
             '/api/v1/invitations/accept',
             server: ['CONTENT_TYPE' => 'application/json'],
-            content: json_encode([
-                'token' => $token,
-                'email' => $email,
-                'display_name' => 'Accepted Invitation User',
-            ], JSON_THROW_ON_ERROR),
+            content: json_encode($payload, JSON_THROW_ON_ERROR),
         );
     }
 

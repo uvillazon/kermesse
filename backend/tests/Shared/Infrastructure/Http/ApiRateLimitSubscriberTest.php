@@ -67,6 +67,28 @@ final class ApiRateLimitSubscriberTest extends TestCase
         self::assertFalse($limiter->called);
     }
 
+    public function testUsesStricterQuotaPerAddressForLogin(): void
+    {
+        $limiter = new class implements RateLimiter {
+            /** @var array{string, string, int}|null */
+            public ?array $consumed = null;
+
+            public function consume(string $action, string $subject, int $limit, \DateTimeImmutable $now): RateLimitDecision
+            {
+                $this->consumed = [$action, $subject, $limit];
+
+                return new RateLimitDecision(true, $limit, $limit - 1, 0);
+            }
+        };
+        $subscriber = new ApiRateLimitSubscriber($limiter, new RateLimitPolicy(true, 60, 4));
+        $request = Request::create('/api/v1/auth/login', 'POST', server: ['REMOTE_ADDR' => '203.0.113.9']);
+        $request->attributes->set('_route', RateLimitPolicy::LOGIN_ROUTE);
+
+        $subscriber->limit($this->event($request));
+
+        self::assertSame(['POST:api_v1_auth_login', 'ip:203.0.113.9', 4], $limiter->consumed);
+    }
+
     private function event(Request $request): RequestEvent
     {
         return new RequestEvent(

@@ -13,6 +13,7 @@ use App\Identity\Domain\InvitationStatus;
 use App\Identity\Infrastructure\Doctrine\DoctrineAccessDirectory;
 use App\Identity\Infrastructure\Doctrine\DoctrineEventAssignmentWriter;
 use App\Identity\Infrastructure\Doctrine\DoctrineInvitationAcceptanceRepository;
+use App\Identity\Infrastructure\Security\NativePasswordHasher;
 use App\Shared\Infrastructure\Doctrine\TransactionalExecutor;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
@@ -148,6 +149,7 @@ final class AcceptInvitationHandlerIntegrationTest extends TestCase
             null,
             self::AUDIT_ID,
             new \DateTimeImmutable('2026-10-30 12:00:00'),
+            password: 'invited-password-1',
         ));
 
         self::assertSame(self::USER_ID, $userId);
@@ -180,7 +182,112 @@ final class AcceptInvitationHandlerIntegrationTest extends TestCase
             '56000000-0000-4000-8000-000000000002',
             '57000000-0000-4000-8000-000000000002',
             new \DateTimeImmutable('2026-10-30 12:05:00'),
+            password: 'invited-password-1',
         ));
+    }
+
+    public function testStoresOnlyPasswordHashForNewIdentity(): void
+    {
+        $this->handler()->handle($this->command());
+
+        $hash = $this->connection()->fetchOne('SELECT password_hash FROM users WHERE id = ?', [self::USER_ID]);
+        self::assertIsString($hash);
+        self::assertNotSame('invited-password-1', $hash);
+        self::assertTrue(password_verify('invited-password-1', $hash));
+        self::assertNotFalse($this->connection()->fetchOne(
+            'SELECT password_updated_at FROM users WHERE id = ?',
+            [self::USER_ID],
+        ));
+    }
+
+    public function testRequiresPasswordWhenInvitationCreatesTheAccount(): void
+    {
+        try {
+            $this->handler()->handle($this->commandWithPassword(null));
+            self::fail('Expected missing password to fail.');
+        } catch (\DomainException $exception) {
+            self::assertStringContainsString('password is required', $exception->getMessage());
+        }
+
+        self::assertFalse($this->connection()->fetchOne('SELECT id FROM users WHERE id = ?', [self::USER_ID]));
+        self::assertSame(InvitationStatus::PENDING->value, $this->connection()->fetchOne(
+            'SELECT status FROM access_invitations WHERE id = ?',
+            [self::INVITATION_ID],
+        ));
+    }
+
+    public function testRejectsPasswordOutsidePolicyBeforeConsumingInvitation(): void
+    {
+        try {
+            $this->handler()->handle($this->commandWithPassword('short'));
+            self::fail('Expected short password to fail.');
+        } catch (\DomainException $exception) {
+            self::assertStringContainsString('at least', $exception->getMessage());
+        }
+
+        self::assertSame(InvitationStatus::PENDING->value, $this->connection()->fetchOne(
+            'SELECT status FROM access_invitations WHERE id = ?',
+            [self::INVITATION_ID],
+        ));
+    }
+
+    public function testNeverReplacesPasswordOfExistingIdentity(): void
+    {
+        $existingId = '51000000-0000-4000-8000-000000000009';
+        $originalHash = password_hash('original-password', PASSWORD_BCRYPT);
+        $this->connection()->insert('users', [
+            'id' => $existingId,
+            'email' => 'invited@example.test',
+            'email_normalized' => 'invited@example.test',
+            'display_name' => 'Existing User',
+            'status' => IdentityStatus::ACTIVE->value,
+            'password_hash' => $originalHash,
+            'created_at' => '2026-10-30 10:00:00',
+            'updated_at' => '2026-10-30 10:00:00',
+        ]);
+
+        $userId = $this->handler()->handle($this->commandWithPassword('attacker-chosen-password'));
+
+        self::assertSame($existingId, $userId);
+        self::assertSame($originalHash, $this->connection()->fetchOne(
+            'SELECT password_hash FROM users WHERE id = ?',
+            [$existingId],
+        ));
+    }
+
+    public function testSetsPasswordForExistingIdentityWithoutOne(): void
+    {
+        $existingId = '51000000-0000-4000-8000-000000000009';
+        $this->connection()->insert('users', [
+            'id' => $existingId,
+            'email' => 'invited@example.test',
+            'email_normalized' => 'invited@example.test',
+            'display_name' => 'Existing User',
+            'status' => IdentityStatus::ACTIVE->value,
+            'created_at' => '2026-10-30 10:00:00',
+            'updated_at' => '2026-10-30 10:00:00',
+        ]);
+
+        $this->handler()->handle($this->commandWithPassword('first-password-1'));
+
+        $hash = $this->connection()->fetchOne('SELECT password_hash FROM users WHERE id = ?', [$existingId]);
+        self::assertIsString($hash);
+        self::assertTrue(password_verify('first-password-1', $hash));
+    }
+
+    private function commandWithPassword(?string $password): AcceptInvitationCommand
+    {
+        return new AcceptInvitationCommand(
+            self::TOKEN,
+            'invited@example.test',
+            'Invited User',
+            self::USER_ID,
+            self::ORGANIZATION_MEMBERSHIP_ID,
+            self::EVENT_MEMBERSHIP_ID,
+            self::AUDIT_ID,
+            new \DateTimeImmutable('2026-10-30 12:00:00'),
+            password: $password,
+        );
     }
 
     private function handler(): AcceptInvitationHandler
@@ -193,6 +300,7 @@ final class AcceptInvitationHandlerIntegrationTest extends TestCase
             new DoctrineEventAssignmentWriter($connection),
             new DoctrineAccessDirectory($connection),
             new DoctrineAuditLogWriter($connection),
+            new NativePasswordHasher(),
         );
     }
 
@@ -208,6 +316,7 @@ final class AcceptInvitationHandlerIntegrationTest extends TestCase
             self::AUDIT_ID,
             new \DateTimeImmutable('2026-10-30 12:00:00'),
             'accept-request',
+            'invited-password-1',
         );
     }
 

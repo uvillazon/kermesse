@@ -3,3 +3,4 @@
 - [Protocolo de memoria](project-protocolo-memoria.md) — dónde vive la memoria y por qué dentro del repo
 - [Matriz de roles v0.3](project-matriz-roles-v03.md) — borrador del 2026-11-03 y decisiones que la bloquean
 - [Sesiones en la nube y GitHub](reference-sesion-nube-github.md) — 403 al hacer push, create_branch y que no hay MariaDB en la nube
+- [Contraseñas del login](project-contrasenas-login.md) — hash, asignación por invitación o comando, límite de intentos
