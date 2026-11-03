@@ -60,7 +60,7 @@ import { EVENT_STATUS } from '../../models/domain';
       <div class="right">
         @if (ctx.active(); as ev) {
           <a
-            class="icon-btn"
+            class="icon-btn open-store"
             [routerLink]="['/tienda', ev.slug]"
             target="_blank"
             title="Ver página pública de compra"
@@ -267,9 +267,15 @@ import { EVENT_STATUS } from '../../models/domain';
     }
 
     @media (max-width: 600px) {
-      .brand-name {
-        display: none;
-      }
+      /* Celular: menú, evento (ocupa el espacio libre) y usuario. La organización se cambia desde el menú. */
+      .topbar { gap: 0.5rem; padding: 0 0.75rem; }
+      .brand, .open-store { display: none; }
+      .left { flex: none; }
+      .center { flex: 1; min-width: 0; }
+      .right { flex: none; gap: 0.4rem; }
+      .event-select { flex: 1; min-width: 0; }
+      .event-select select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+      .user-block { padding: 0.2rem; background: transparent; }
     }
   `],
 })

@@ -1,4 +1,6 @@
-import { computed, signal } from '@angular/core';
+import { LOCALE_ID, computed, signal } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeEsBo from '@angular/common/locales/es-BO';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -59,7 +61,10 @@ export function fakeEventContext(event: KEvent | null = TEST_EVENT) {
 
 /** Proveedores HTTP de prueba. Con `ctx = null` se usa el EventContextService real. */
 export function apiTestProviders(ctx: unknown | null = fakeEventContext()) {
+  registerLocaleData(localeEsBo);
   const base = [
+    // Mismo idioma que la app (app.config.ts): montos y fechas en formato boliviano.
+    { provide: LOCALE_ID, useValue: 'es-BO' },
     provideRouter([]),
     provideHttpClient(withInterceptors([errorHandlerInterceptor])),
     provideHttpClientTesting(),

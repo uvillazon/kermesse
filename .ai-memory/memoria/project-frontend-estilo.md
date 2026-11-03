@@ -25,5 +25,14 @@ las leía como hora local y en Bolivia mostraba 4 h de más. `fecha` las interpr
 8601 UTC. Los campos `date` / `expires` (texto con mes en inglés) quedan solo por compatibilidad. La lista de
 eventos ya no inventa `'28 oct 2026'` cuando no hay fecha.
 
+**Historial de cambios:** `features/reports/audit-description.ts` traduce cada acción del backend a una frase.
+Al agregar una acción nueva en el backend, agregarla ahí (el caso por defecto dice "Registró una acción").
+El endpoint devuelve `subject_name` (persona afectada) para no mostrar UUID.
+
+**Celular (≤600/700 px):** la página nunca se desplaza de lado (se midió `scrollWidth` = 390 en todas las pantallas).
+Barra superior: menú, evento, usuario; organización y tienda pública en el menú (`.group.mobile-only`). Cifras en
+2 columnas, botones ≥44 px. Ventas: productos en 2 columnas y `.mobile-action-bar` (global en `styles.scss`) con
+total y "Cobrar". Tickets: lector primero (`order`). Pendiente: tablas → tarjetas en celular.
+
 **Encabezado de página:** `.page-header` en `styles.scss` sin tarjeta: etiqueta, título 1.4rem, una línea de
 descripción y acciones a la derecha, separados del contenido por una línea.

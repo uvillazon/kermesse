@@ -112,7 +112,7 @@ interface ApiSale {
 
       @switch (tab()) {
         @case ('pos') {
-          <div class="pos">
+          <div class="pos" [class.has-items]="itemCount() > 0">
             <div class="pos-catalog panel">
               <div class="panel-head">
                 <h2><i class="pi pi-th-large"></i> Catálogo disponible en caja</h2>
@@ -163,6 +163,9 @@ interface ApiSale {
                     (click)="add(p.id)"
                     [disabled]="ctx.readOnly() || p.available_quantity <= 0"
                   >
+                    @if (cart()[p.id]; as qty) {
+                      <span class="in-cart" [attr.aria-label]="qty + ' en el pedido'">{{ qty }}</span>
+                    }
                     <div class="prod-top">
                       <span class="stand-tag">{{ p.stand_name }}</span>
                       <span class="code-tag mono">{{ p.code }}</span>
@@ -184,7 +187,7 @@ interface ApiSale {
               </section>
             </div>
 
-            <aside class="panel cart">
+            <aside class="panel cart" id="orden-actual">
               <div class="panel-head">
                 <h2><i class="pi pi-receipt"></i> Orden actual</h2>
                 <span class="pill blue">{{ itemCount() }} ítems</span>
@@ -283,6 +286,12 @@ interface ApiSale {
                 }
               </div>
             </aside>
+            @if (itemCount() > 0) {
+              <div class="mobile-action-bar" role="region" aria-label="Resumen del pedido">
+                <span><b>{{ itemCount() }}</b> {{ itemCount() === 1 ? 'ítem' : 'ítems' }} · <b class="money">Bs {{ total() | number:'1.2-2' }}</b></span>
+                <button type="button" (click)="goToCart()">Cobrar <i class="pi pi-arrow-down"></i></button>
+              </div>
+            }
           </div>
         }
 
@@ -556,6 +565,20 @@ interface ApiSale {
     .sale-success div { display: flex; flex-direction: column; }
     .row-actions { display: inline-flex; gap: .4rem; justify-content: flex-end; }
     @media (max-width: 1000px) { .pos { grid-template-columns: 1fr; } .cart { position: static; } }
+    .prod { position: relative; }
+    .in-cart {
+      position: absolute; top: -.45rem; right: -.45rem; min-width: 1.6rem; height: 1.6rem; padding: 0 .35rem;
+      border-radius: 999px; background: var(--kf-primary); color: #fff; font-size: .8rem; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(6, 59, 115, .3);
+    }
+    @media (max-width: 700px) {
+      /* Dos productos por fila y una barra fija para cobrar sin bajar hasta el pedido. */
+      .products { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; padding: .85rem; }
+      .prod { padding: .7rem; min-height: 44px; }
+      .prod .code-tag { display: none; }
+      .qty button { width: 36px; height: 36px; }
+      .pos.has-items { padding-bottom: 76px; }
+    }
   `],
 })
 export class SalesComponent {
@@ -683,6 +706,11 @@ export class SalesComponent {
       this.errorMessage.set(null);
       this.reload();
     });
+  }
+
+  /** En celular el pedido queda debajo del catálogo: la barra de cobro lleva hasta él. */
+  goToCart(): void {
+    document.getElementById('orden-actual')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   resetPosFilters(): void {

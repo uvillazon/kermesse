@@ -444,3 +444,64 @@ a { color: inherit; text-decoration: none; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .grid-search { max-width: 100%; }
 }
+
+/* ---------- Celular ----------
+   En el evento se vende y se canjea desde el celular: menos desplazamiento, cifras en dos columnas
+   y botones de al menos 44 px de alto. */
+@media (max-width: 600px) {
+  .page { gap: 1rem; }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .kpi {
+    padding: 0.8rem 0.85rem;
+    border-radius: 12px;
+    .kpi-label { font-size: 0.66rem; letter-spacing: 0.03em; }
+    .kpi-value { font-size: 1.2rem; margin-top: 0.25rem; overflow-wrap: anywhere; }
+    .kpi-foot { font-size: 0.7rem; }
+  }
+  .page-actions { width: 100%; }
+  .p-button { min-height: 44px; }
+  /* Las tablas se desplazan dentro de su panel; los códigos no se parten en varias líneas. */
+  .p-datatable td .mono, .p-datatable td.mono { white-space: nowrap; }
+
+}
+
+@media (max-width: 700px) {
+  /* Barra fija inferior con la acción principal (p. ej. "Cobrar" en Ventas). */
+  .mobile-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    padding: 0.7rem max(16px, env(safe-area-inset-right, 0px)) calc(0.7rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    background: var(--kf-primary);
+    color: #fff;
+    box-shadow: 0 -6px 18px rgba(6, 59, 115, 0.25);
+
+    .money { color: var(--kf-accent); }
+
+    button {
+      min-height: 44px;
+      padding: 0 1.1rem;
+      border: 0;
+      border-radius: 10px;
+      background: var(--kf-accent);
+      color: var(--kf-primary-dark);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+  }
+}
+
+/* Fuera del celular la barra no se muestra: el pedido ya está a la vista. */
+@media (min-width: 701px) {
+  .mobile-action-bar { display: none; }
+}

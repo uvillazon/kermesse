@@ -133,3 +133,32 @@ describe('Tablas de PrimeNG', () => {
     expect(el.textContent).toContain('Concepto');
   });
 });
+
+describe('Ventas en celular', () => {
+  it('la barra de cobro aparece solo con productos en el pedido y muestra el total', async () => {
+    TestBed.configureTestingModule({ imports: [SalesComponent], providers: apiTestProviders() });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(SalesComponent);
+    fixture.detectChanges();
+    await respondAll(http);
+    const cmp = fixture.componentInstance as unknown as {
+      products: { set: (v: unknown[]) => void };
+      add: (id: string) => void;
+    };
+    cmp.products.set([
+      { id: 'p1', code: 'BEB-01', name: 'Refresco', stand_id: 's1', stand_name: 'Bebidas', unit_price: 1250.5, stock: 10, sold: 0, available_quantity: 10, active: true },
+    ]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.mobile-action-bar')).toBeNull();
+
+    cmp.add('p1');
+    cmp.add('p1');
+    fixture.detectChanges();
+    const bar = el.querySelector('.mobile-action-bar');
+    expect(bar).not.toBeNull();
+    expect(bar?.textContent).toContain('2 ítems');
+    expect(bar?.textContent).toContain('Bs 2.501,00');
+    expect(el.querySelector('.in-cart')?.textContent?.trim()).toBe('2');
+  });
+});

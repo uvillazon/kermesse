@@ -85,7 +85,7 @@ export interface ApiTicket {
       </div>
 
       <!-- KPIs rápidos de Tickets -->
-      <div class="kpi-grid">
+      <div class="kpi-grid ticket-kpis">
         <div class="kpi">
           <div class="kpi-label">Tickets emitidos</div>
           <div class="kpi-value">{{ tickets().length }}</div>
@@ -749,6 +749,12 @@ export interface ApiTicket {
       font-size: 0.82rem;
       i { color: var(--kf-primary); }
       div { display: flex; flex-direction: column; }
+    }
+    /* Celular: primero el lector y la entrega; las cifras van al final. */
+    @media (max-width: 700px) {
+      .ticket-kpis { order: 1; }
+      .scan-box { padding: .75rem; font-size: .8rem; }
+      .scan-box > i { font-size: 1.4rem; }
     }
   `],
 })

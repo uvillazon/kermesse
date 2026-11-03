@@ -3,5 +3,5 @@
 - [Protocolo de memoria](project-protocolo-memoria.md) — dónde vive la memoria y por qué dentro del repo
 - [Matriz de roles v0.3](project-matriz-roles-v03.md) — borrador del 2026-11-03 y decisiones que la bloquean
 - [Auditoría frontend](project-frontend-auditoria.md) — 2026-11-03: mocks eliminados (regla: vacío o error visible); recarga al cambiar evento (onActiveEventChange+isStale); organización desde el login; pendiente roles en UI
-- [Estilo del frontend](project-frontend-estilo.md) — textos sin jerga técnica, formato es-BO, pipe `fecha` (UTC) y encabezado compacto
+- [Estilo del frontend](project-frontend-estilo.md) — textos sin jerga, es-BO, pipe `fecha` (UTC), encabezado compacto, historial en frases y celular
 - [Sesiones en la nube y GitHub](reference-sesion-nube-github.md) — 403 al hacer push, create_branch y cómo instalar MariaDB en la nube para pruebas de integración
