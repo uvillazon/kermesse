@@ -1,211 +1,290 @@
-import { Component, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, output } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { EventContextService } from '../../services/event-context.service';
+import { AuthService } from '../../services/auth.service';
+import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [FormsModule, RouterModule],
   template: `
     <header class="topbar">
-      <div class="topbar-left">
-        <button class="toggle-btn" (click)="toggleSidebar.emit()" aria-label="Alternar menú">
+      <div class="left">
+        <button class="icon-btn" (click)="toggleSidebar.emit()" aria-label="Alternar menú">
           <i class="pi pi-bars"></i>
         </button>
-
-        <a routerLink="/" class="brand">
-          <div class="brand-crest">SA</div>
-          <div class="brand-info">
-            <span class="brand-title">Kermesse</span>
-            <small class="brand-subtitle">Saint Andrew's School</small>
-          </div>
+        <a routerLink="/home" class="brand">
+          <span class="logo"><i class="pi pi-globe"></i></span>
+          <span class="brand-name">Kermes<b>fera</b></span>
         </a>
+        <span class="divider"></span>
+        <span class="org">
+          <span class="org-badge">{{ org.initials }}</span>
+          <span class="org-name">{{ org.name }}</span>
+        </span>
       </div>
 
-      <div class="topbar-center">
-        <div class="event-badge">
-          <span class="pulse-indicator"></span>
-          <span>Kermesse Halloween 2026 &bull; Modo Activo</span>
-        </div>
+      <div class="center">
+        <label class="event-select">
+          <i class="pi pi-calendar"></i>
+          <select [ngModel]="ctx.active().id" (ngModelChange)="ctx.select($event)" aria-label="Evento activo">
+            @for (e of ctx.all(); track e.id) {
+              <option [value]="e.id">{{ e.name }}</option>
+            }
+          </select>
+        </label>
+        <span class="pill" [class]="'pill ' + status[ctx.active().status].css">
+          {{ status[ctx.active().status].label }}
+        </span>
+        <span
+          class="backend-pill"
+          [class.online]="auth.isBackendConnected()"
+          [title]="auth.isBackendConnected() ? 'Conectado a Symfony 127.0.0.1:8000' : 'Desconectado de 127.0.0.1:8000'"
+        >
+          <i class="pi pi-circle-fill"></i>
+          <span>API {{ auth.isBackendConnected() ? '8000 OK' : 'Offline' }}</span>
+        </span>
       </div>
 
-      <div class="topbar-right">
-        <div class="user-profile">
-          <div class="avatar">AD</div>
-          <div class="user-meta">
-            <span class="user-name">Administrador</span>
-            <span class="user-role">Comisión Central</span>
+      <div class="right">
+        <a
+          class="icon-btn"
+          routerLink="/tienda/halloween-2026"
+          target="_blank"
+          title="Ver página pública de compra"
+        >
+          <i class="pi pi-external-link"></i>
+        </a>
+
+        @if (auth.currentUser(); as user) {
+          <div class="user-block">
+            <span class="avatar">{{ user.avatarInitials }}</span>
+            <span class="user">
+              <b>{{ user.name }}</b>
+              <small>{{ getOrgAccessLabel(user.orgAccess) }}</small>
+            </span>
+            <button
+              class="icon-btn logout-btn"
+              (click)="auth.logout()"
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <i class="pi pi-sign-out"></i>
+            </button>
           </div>
-        </div>
+        } @else {
+          <a routerLink="/login" class="login-link">Iniciar sesión</a>
+        }
       </div>
     </header>
   `,
   styles: [`
     .topbar {
-      height: 68px;
-      background: #ffffff;
-      border-bottom: 1px solid #e5e9f0;
+      height: 64px;
+      background: var(--kf-primary);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 1.5rem;
+      gap: 1rem;
+      padding: 0 1.25rem;
       position: sticky;
       top: 0;
       z-index: 100;
     }
 
-    .topbar-left {
+    .left, .center, .right {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.75rem;
     }
 
-    .toggle-btn {
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
       background: transparent;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      width: 38px;
-      height: 38px;
+      color: #fff;
       display: grid;
       place-items: center;
       cursor: pointer;
-      color: #18243a;
-      transition: background-color 0.15s ease;
+      transition: background 0.15s ease;
 
       &:hover {
-        background-color: #f1f5f9;
+        background: rgba(255, 255, 255, 0.12);
       }
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      text-decoration: none;
-      color: inherit;
+      gap: 0.5rem;
+      font-size: 1.15rem;
+
+      b {
+        color: var(--kf-accent);
+      }
     }
 
-    .brand-crest {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: #18243a;
-      color: #ffffff;
+    .logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--kf-accent);
+      color: var(--kf-primary);
       display: grid;
       place-items: center;
-      font-weight: 800;
-      font-size: 0.95rem;
-      letter-spacing: -0.5px;
     }
 
-    .brand-info {
+    .divider {
+      width: 1px;
+      height: 26px;
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .org {
       display: flex;
-      flex-direction: column;
-    }
-
-    .brand-title {
-      font-weight: 700;
-      font-size: 1rem;
-      color: #18243a;
-      line-height: 1.2;
-    }
-
-    .brand-subtitle {
-      font-size: 0.75rem;
-      color: #64748b;
-      font-weight: 500;
-    }
-
-    .topbar-center {
-      display: flex;
-      align-items: center;
-    }
-
-    .event-badge {
-      display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      color: #1e40af;
-      padding: 0.35rem 0.85rem;
-      border-radius: 9999px;
-      font-size: 0.8rem;
-      font-weight: 600;
+      font-size: 0.85rem;
     }
 
-    .pulse-indicator {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-      animation: pulse 1.8s infinite;
+    .org-badge {
+      background: #fff;
+      color: var(--kf-primary);
+      border-radius: 7px;
+      padding: 0.15rem 0.4rem;
+      font-weight: 800;
+      font-size: 0.72rem;
     }
 
-    @keyframes pulse {
-      0% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-      }
-      70% {
-        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
-      }
-      100% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-      }
-    }
-
-    .topbar-right {
+    .event-select {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.4rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 9px;
+      padding: 0.35rem 0.6rem;
+
+      select {
+        background: transparent;
+        color: #fff;
+        border: 0;
+        font: inherit;
+        font-size: 0.85rem;
+        outline: none;
+      }
+
+      option {
+        color: var(--kf-ink);
+      }
     }
 
-    .user-profile {
+    .user-block {
       display: flex;
       align-items: center;
-      gap: 0.65rem;
+      gap: 0.55rem;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.25rem 0.45rem 0.25rem 0.65rem;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .backend-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+
+      i {
+        font-size: 0.5rem;
+      }
+
+      &.online {
+        background: rgba(34, 197, 94, 0.2);
+        color: #86efac;
+      }
     }
 
     .avatar {
-      width: 36px;
-      height: 36px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
-      background: #fde8df;
-      color: #b8431e;
+      background: var(--kf-accent);
+      color: var(--kf-primary);
       display: grid;
       place-items: center;
-      font-size: 0.85rem;
-      font-weight: 700;
+      font-weight: 800;
+      font-size: 0.75rem;
     }
 
-    .user-meta {
+    .user {
       display: flex;
       flex-direction: column;
-    }
-
-    .user-name {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #18243a;
+      font-size: 0.78rem;
       line-height: 1.2;
-    }
 
-    .user-role {
-      font-size: 0.72rem;
-      color: #64748b;
-    }
-
-    @media (max-width: 768px) {
-      .topbar-center, .user-meta {
-        display: none;
-      }
-      .brand-subtitle {
-        display: none;
+      small {
+        opacity: 0.75;
       }
     }
-  `]
+
+    .logout-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 0;
+      background: rgba(255, 255, 255, 0.15);
+      font-size: 0.8rem;
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.8);
+      }
+    }
+
+    .login-link {
+      background: var(--kf-accent);
+      color: var(--kf-primary);
+      padding: 0.4rem 0.85rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 900px) {
+      .org, .divider, .user, .center .pill {
+        display: none;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .brand-name {
+        display: none;
+      }
+    }
+  `],
 })
 export class TopbarComponent {
   readonly toggleSidebar = output<void>();
+  protected readonly ctx = inject(EventContextService);
+  protected readonly auth = inject(AuthService);
+  protected readonly org = ORGANIZATION;
+  protected readonly status = EVENT_STATUS;
+
+  getOrgAccessLabel(type: 'owner' | 'administrator' | 'collaborator'): string {
+    switch (type) {
+      case 'owner': return 'Propietaria';
+      case 'administrator': return 'Administrador';
+      case 'collaborator': return 'Colaborador';
+    }
+  }
 }

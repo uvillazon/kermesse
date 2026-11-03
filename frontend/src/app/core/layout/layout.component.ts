@@ -1,70 +1,36 @@
-import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TopbarComponent } from './topbar/topbar.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
+import { EventContextService } from '../services/event-context.service';
 
 @Component({
   selector: 'app-layout',
-  standalone: true,
-  imports: [CommonModule, RouterOutlet, TopbarComponent, SidebarComponent],
+  imports: [RouterOutlet, TopbarComponent, SidebarComponent],
   template: `
-    <div class="layout-wrapper">
-      <app-topbar (toggleSidebar)="toggleSidebar()" />
-      <div class="layout-main-container">
-        <app-sidebar [collapsed]="sidebarCollapsed()" />
-        <main class="layout-content" (click)="onContentClick()">
-          <div class="content-viewport">
-            <router-outlet></router-outlet>
+    <app-topbar (toggleSidebar)="sidebarOpen.set(!sidebarOpen())" />
+    <div class="shell">
+      <app-sidebar [open]="sidebarOpen()" (navigate)="sidebarOpen.set(false)" />
+      <main class="content">
+        @if (ctx.readOnly()) {
+          <div class="notice info readonly">
+            <i class="pi pi-lock"></i>
+            <span><b>{{ ctx.active().name }}</b> está cerrado: todo queda en modo consulta para todos los usuarios, incluidos administradores. Se conservan detalle y exportación según permisos.</span>
           </div>
-        </main>
-      </div>
+        }
+        <router-outlet />
+      </main>
     </div>
+    <span class="proto-badge">Prototipo · datos simulados</span>
   `,
   styles: [`
-    .layout-wrapper {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background-color: #f8fafc;
-      color: #0f172a;
-    }
-
-    .layout-main-container {
-      display: flex;
-      flex: 1;
-      width: 100%;
-    }
-
-    .layout-content {
-      flex: 1;
-      padding: 2rem 2.5rem;
-      min-width: 0;
-      overflow-y: auto;
-    }
-
-    .content-viewport {
-      max-width: 1380px;
-      margin: 0 auto;
-    }
-
-    @media (max-width: 900px) {
-      .layout-content {
-        padding: 1.25rem 1rem;
-      }
-    }
-  `]
+    .shell { display: flex; min-height: calc(100vh - 64px); }
+    .content { flex: 1; min-width: 0; padding: 1.75rem 2rem; max-width: 1400px; margin: 0 auto; }
+    .readonly { margin-bottom: 1.25rem; }
+    @media (max-width: 900px) { .content { padding: 1.1rem .9rem; } }
+  `],
 })
 export class LayoutComponent {
-  readonly sidebarCollapsed = signal<boolean>(true);
-
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update((v) => !v);
-  }
-
-  onContentClick(): void {
-    if (window.innerWidth <= 900 && !this.sidebarCollapsed()) {
-      this.sidebarCollapsed.set(true);
-    }
-  }
+  protected readonly ctx = inject(EventContextService);
+  protected readonly sidebarOpen = signal(false);
 }

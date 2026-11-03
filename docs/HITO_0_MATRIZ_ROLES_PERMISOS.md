@@ -44,6 +44,7 @@ No se define en esta matriz un rol de soporte global multi-organización. Si se 
 | `org.manage_members` | Crear, cambiar o retirar responsables y roles | Organización/evento |
 | `event.read` | Consultar configuración y estado del evento | Evento |
 | `event.manage` | Crear o modificar evento y configuración operativa | Evento abierto |
+| `catalog.read` | Consultar productos, precios y disponibilidad autorizados | Evento |
 | `catalog.manage` | Crear, publicar, pausar o modificar productos, precio y disponibilidad | Evento abierto |
 | `course.manage` | Crear cursos/grupos y asignar tickets o productos | Evento abierto |
 | `expense.write` | Registrar, modificar o anular costos y gastos | Evento abierto |
@@ -77,6 +78,7 @@ Leyenda: **✓** permitido; **—** denegado; **H** permitido solo en eventos hi
 |---|---:|---:|---:|---:|---:|---:|---:|
 | `event.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | H |
 | `event.manage` | ✓ | — | — | — | — | — | — |
+| `catalog.read` | ✓ | — | ✓ | — | — | — | — |
 | `catalog.manage` | ✓ | — | — | — | — | — | — |
 | `course.manage` | ✓ | — | — | — | — | — | — |
 | `expense.write` | A | A | — | — | — | — | — |

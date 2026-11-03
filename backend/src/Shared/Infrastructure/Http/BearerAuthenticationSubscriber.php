@@ -26,9 +26,10 @@ final readonly class BearerAuthenticationSubscriber
 
         $request = $event->getRequest();
         $path = $request->getPathInfo();
-        if (!str_starts_with($path, '/api/v1/') || in_array($path, [
+        if (!str_starts_with($path, '/api/v1/') || str_starts_with($path, '/api/v1/public/') || in_array($path, [
             '/api/v1/health',
             '/api/v1/invitations/accept',
+            '/api/v1/auth/login',
         ], true)) {
             return;
         }

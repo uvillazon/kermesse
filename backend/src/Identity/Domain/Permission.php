@@ -8,6 +8,7 @@ enum Permission: string
     case ORGANIZATION_MANAGE_MEMBERS = 'org.manage_members';
     case EVENT_READ = 'event.read';
     case EVENT_MANAGE = 'event.manage';
+    case CATALOG_READ = 'catalog.read';
     case CATALOG_MANAGE = 'catalog.manage';
     case COURSE_MANAGE = 'course.manage';
     case EXPENSE_WRITE = 'expense.write';

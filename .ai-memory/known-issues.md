@@ -9,5 +9,12 @@
 - La rotación multiclave de invitaciones está implementada. Operaciones debe retirar una versión heredada solo después de comprobar que no existen entregas `pending` o `processing` con esa `token_key_version`; aún falta automatizar esa comprobación/alerta.
 - El backend valida JWT Bearer HS256, pero todavía no existe flujo de login/emisión ni proveedor de identidad aprobado. El secreto HMAC debe sustituirse por uno real fuera de Git y reconsiderarse firma asimétrica si el proveedor elegido la soporta.
 - El límite API usa una cuota general por minuto. Aún deben calibrarse cuotas específicas para aceptación de invitaciones, venta pública, QR, exportaciones y autenticación con las pruebas de carga; también debe programarse la limpieza periódica de contadores expirados.
-- La instalación todavía no fue reproducida en un segundo equipo. Deben verificarse PHP 8.2, extensiones, Composer, MariaDB, nueve migraciones, pruebas de integración y comportamiento HTTP sin trasladar `.env.local` ni credenciales por Git.
+- La instalación todavía no fue reproducida en un segundo equipo. Localmente una base temporal vacía aplicó correctamente las trece migraciones; aún deben verificarse PHP 8.2, extensiones, Composer, MariaDB, pruebas de integración y comportamiento HTTP en el segundo equipo sin trasladar `.env.local` ni credenciales por Git.
+- Ventas en efectivo confirma venta, pago, stock y ticket atómicamente mediante handler y repositorio Doctrine. QR y transferencia siguen deshabilitados hasta aprobar reserva, vencimiento y liberación de stock; también falta definir descuentos y mientras tanto `discount_total` es cero.
 
+
+## Claude-Mem consume la cuota del plan (2026-11-03)
+
+- El worker local usa el token de Claude Code y encola cientos de resúmenes por día aunque no se trabaje.
+- Se desactivó el plugin (`enabledPlugins` en `~/.claude/settings.json`). Reactivarlo solo si se limita su procesamiento automático.
+- La memoria entre agentes no depende de él: vive en `.ai-memory/` y la bitácora.

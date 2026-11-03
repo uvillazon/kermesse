@@ -5,7 +5,7 @@
 **Fecha:** 2026-10-30
 **Alcance:** persistencia lógica, migraciones, repositorios Doctrine y comandos transaccionales de identidad/acceso; motor productivo no aprobado
 
-**Resultado local 2026-10-30:** base `kermesfera` creada en MariaDB 10.4.18, nueve migraciones ejecutadas, 16 tablas funcionales más el historial de Doctrine, 9 roles, 16 permisos y ninguna asignación de `event.close`. Lectura, comandos críticos de acceso, idempotencia persistente, límites de solicitudes y entrega reintentable de invitaciones están implementados y probados contra MariaDB, incluida una carrera real entre procesos.
+**Resultado local 2026-10-30:** base `kermesfera` creada en MariaDB 10.4.18, diez migraciones ejecutadas, 16 tablas funcionales más el historial de Doctrine, 9 roles, 17 permisos y ninguna asignación de `event.close`. Lectura, comandos críticos de acceso, idempotencia persistente, límites de solicitudes y entrega reintentable de invitaciones están implementados y probados contra MariaDB, incluida una carrera real entre procesos.
 
 ## 1. Objetivo
 
@@ -28,7 +28,7 @@ La definición detallada de campos, relaciones e índices está en `docs/MODELO_
 
 ## 3. Orden propuesto de migraciones
 
-Las ocho migraciones actuales ya fueron creadas y ejecutadas en el entorno local. Las siguientes etapas continúan sujetas a la aprobación del motor productivo.
+Las diez migraciones actuales ya fueron creadas y ejecutadas en el entorno local. Las siguientes etapas continúan sujetas a la aprobación del motor productivo.
 
 1. **Identidad y catálogos:** `users`, `roles`, `permissions`, `role_permissions`.
 2. **Organizaciones:** `organizations`, `organization_memberships`, `organization_membership_roles`.

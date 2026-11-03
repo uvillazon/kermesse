@@ -1,7 +1,11 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 
 export const errorHandlerInterceptor: HttpInterceptorFn = (req, next) => {
+  const router = inject(Router);
+
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       let errorMessage = 'Ha ocurrido un error inesperado.';
@@ -17,6 +21,11 @@ export const errorHandlerInterceptor: HttpInterceptorFn = (req, next) => {
             break;
           case 401:
             errorMessage = 'Sesión no autorizada o expirada (401).';
+            if (!req.url.includes('/auth/login')) {
+              localStorage.removeItem('kermesfera_auth_token');
+              localStorage.removeItem('kermesfera_auth_user');
+              router.navigate(['/login']);
+            }
             break;
           case 403:
             errorMessage = 'No tienes permisos para realizar esta acción (403).';

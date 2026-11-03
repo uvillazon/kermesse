@@ -43,6 +43,39 @@ final class ApiRequestInput
         return trim($value);
     }
 
+    /** @param array<string, mixed> $payload */
+    public function optionalString(array $payload, string $field, int $maximumLength): ?string
+    {
+        $value = $payload[$field] ?? null;
+        if (null === $value || '' === $value) {
+            return null;
+        }
+        if (!is_string($value)) {
+            throw new UnprocessableEntityHttpException($field.' must be a string or null.');
+        }
+
+        $value = trim($value);
+        if ('' === $value) {
+            return null;
+        }
+        if (strlen($value) > $maximumLength) {
+            throw new UnprocessableEntityHttpException($field.' must not be longer than '.$maximumLength.' characters.');
+        }
+
+        return $value;
+    }
+
+    /** @param array<string, mixed> $payload */
+    public function email(array $payload, string $field): string
+    {
+        $email = strtolower($this->requiredString($payload, $field));
+        if (strlen($email) > 254 || false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new UnprocessableEntityHttpException($field.' must be a valid email address.');
+        }
+
+        return $email;
+    }
+
     public function uuid(string $value, string $field): string
     {
         if (1 !== preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $value)) {

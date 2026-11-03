@@ -34,9 +34,13 @@ final class RolePermissionMap
             EventRole::EVENT_MANAGER => [
                 Permission::EVENT_READ,
                 Permission::EVENT_MANAGE,
+                Permission::CATALOG_READ,
                 Permission::CATALOG_MANAGE,
                 Permission::COURSE_MANAGE,
+                Permission::SALE_WRITE,
+                Permission::PAYMENT_REVIEW,
                 Permission::TICKET_READ,
+                Permission::TICKET_REDEEM,
                 Permission::REPORT_READ,
             ],
             EventRole::FINANCE_REVIEWER => [
@@ -48,6 +52,7 @@ final class RolePermissionMap
             ],
             EventRole::SALES_OPERATOR => [
                 Permission::EVENT_READ,
+                Permission::CATALOG_READ,
                 Permission::SALE_WRITE,
             ],
             EventRole::PAYMENT_REVIEWER => [

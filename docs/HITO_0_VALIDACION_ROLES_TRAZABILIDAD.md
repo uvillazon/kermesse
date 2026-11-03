@@ -17,6 +17,8 @@ Revisión documental. No sustituye la aprobación de la organización. Las dos p
 
 ## Huecos y contradicciones a resolver
 
+**Actualización 2026-10-30:** el hallazgo 1 quedó resuelto con `catalog.read` para `EVENT_MANAGER` y `SALES_OPERATOR`, tanto en la matriz como en el catálogo persistido. Los demás hallazgos siguen abiertos.
+
 | # | Hallazgo | Impacto | Propuesta |
 |---|---|---|---|
 | 1 | No existe `catalog.read` interno: `SALES_OPERATOR` vende (`sale.write`) pero ningún permiso le da ver el catálogo ni la disponibilidad (`US-H0-005`). | Bloquea API de venta rápida. | Añadir `catalog.read` (evento/puesto) a operadores de venta y gestión. |

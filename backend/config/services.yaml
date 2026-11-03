@@ -74,3 +74,13 @@ services:
 
   App\Audit\Application\AuditLogWriter:
     alias: App\Audit\Infrastructure\Doctrine\DoctrineAuditLogWriter
+
+  App\Sale\Application\CreateSale\SaleWriteRepository:
+    alias: App\Sale\Infrastructure\Doctrine\DoctrineSaleWriteRepository
+
+  App\Sale\Application\CreateSale\SaleReservationPolicy:
+    arguments:
+      $ttlSeconds: '%env(int:SALE_RESERVATION_TTL_SECONDS)%'
+
+  App\Sale\Application\ExpireReservations\SaleReservationRepository:
+    alias: App\Sale\Infrastructure\Doctrine\DoctrineSaleReservationRepository

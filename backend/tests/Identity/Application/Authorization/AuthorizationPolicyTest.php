@@ -65,11 +65,13 @@ final class AuthorizationPolicyTest extends TestCase
         self::assertSame(AccessDenialReason::ORGANIZATION_MANAGEMENT_NOT_ALLOWED, $decision->reason);
     }
 
-    public function testSalesOperatorCanSellButCannotReviewPayments(): void
+    public function testSalesOperatorCanReadCatalogAndSellButCannotManageCatalogOrReviewPayments(): void
     {
         $this->assignOpenEvent([EventRole::SALES_OPERATOR]);
 
+        self::assertTrue($this->decide(Permission::CATALOG_READ, 'event-open')->allowed);
         self::assertTrue($this->decide(Permission::SALE_WRITE, 'event-open')->allowed);
+        self::assertFalse($this->decide(Permission::CATALOG_MANAGE, 'event-open')->allowed);
 
         $payment = $this->decide(Permission::PAYMENT_REVIEW, 'event-open');
         self::assertFalse($payment->allowed);

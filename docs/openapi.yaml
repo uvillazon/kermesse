@@ -14,6 +14,8 @@ security:
 tags:
   - name: Technical
   - name: Identity
+  - name: Catalog
+  - name: Store
   - name: Sales
   - name: Payments
   - name: Tickets
@@ -283,11 +285,108 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+  /public/events/{slug}/catalog:
+    get:
+      tags: [Store]
+      operationId: getPublicEventCatalog
+      security: []
+      x-implementation-status: implemented
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+      responses:
+        '200':
+          description: Evento y productos activos con disponibilidad actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicCatalogResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /public/events/{slug}/orders:
+    post:
+      tags: [Store]
+      operationId: createPublicOrder
+      security: []
+      x-implementation-status: implemented
+      description: Reserva inventario por 15 minutos para un pago QR pendiente de revisión.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicOrderRequest'
+      responses:
+        '201':
+          description: Reserva creada sin habilitar todavía el ticket.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicOrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /organizations/{organizationId}/events/{eventId}/catalog/products:
+    get:
+      tags: [Catalog]
+      operationId: listSaleCatalogProducts
+      description: Catálogo interno de solo lectura para responsables y operadores con `catalog.read`.
+      x-implementation-status: implemented
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, paused]
+      responses:
+        '200':
+          description: Productos visibles, precios vigentes y disponibilidad calculada del evento.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleCatalogPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /organizations/{organizationId}/events/{eventId}/sales:
     get:
       tags: [Sales]
       operationId: listSales
-      x-implementation-status: planned
+      x-implementation-status: implemented
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/EventId'
@@ -297,6 +396,18 @@ paths:
           in: query
           schema:
             type: string
+            enum: [pending_payment, confirmed, cancelled, refunded]
+        - name: payment_status
+          in: query
+          schema:
+            type: string
+            enum: [pending, to_verify, confirmed, rejected, cancelled, refunded]
+        - name: buyer_email
+          in: query
+          schema:
+            type: string
+            format: email
+            maxLength: 254
         - name: created_from
           in: query
           schema:
@@ -313,15 +424,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedResponse'
+                $ref: '#/components/schemas/SalePageResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
     post:
       tags: [Sales]
       operationId: createSale
-      x-implementation-status: planned
+      x-implementation-status: implemented
+      description: La primera implementación acepta efectivo y confirma venta, pago, inventario y ticket en una sola transacción idempotente.
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/EventId'
@@ -341,11 +455,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandResourceResponse'
+                $ref: '#/components/schemas/SaleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/IdempotencyConflict'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /organizations/{organizationId}/events/{eventId}/payments/{paymentId}/confirmation:
     post:
       tags: [Payments]
@@ -381,6 +501,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommandResourceResponse'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /organizations/{organizationId}/events/{eventId}/sales/{saleId}/payment/review:
+    post:
+      tags: [Payments]
+      operationId: reviewSalePayment
+      x-implementation-status: implemented
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/SaleId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentReviewRequest'
+      responses:
+        '200':
+          description: Reserva confirmada o rechazada atómicamente.
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/IdempotencyReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentReviewResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/IdempotencyConflict'
         '422':
@@ -637,6 +789,13 @@ components:
       schema:
         type: string
         format: uuid
+    SaleId:
+      name: saleId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     TicketId:
       name: ticketId
       in: path
@@ -707,6 +866,12 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     Forbidden:
       description: La identidad no tiene autorización para el alcance solicitado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: El recurso solicitado no existe o no está publicado.
       content:
         application/json:
           schema:
@@ -983,7 +1148,51 @@ components:
             status:
               type: string
               const: accepted
-    CreateSaleRequest:
+    PublicCatalogResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [event, products]
+          properties:
+            event:
+              type: object
+              additionalProperties: false
+              required: [id, organization_id, organization_name, slug, name, status, date]
+              properties:
+                id: { type: string, format: uuid }
+                organization_id: { type: string, format: uuid }
+                organization_name: { type: string }
+                slug: { type: string }
+                name: { type: string }
+                status: { type: string }
+                date: { type: [string, 'null'] }
+            products:
+              type: array
+              items:
+                $ref: '#/components/schemas/PublicCatalogProduct'
+    PublicCatalogProduct:
+      type: object
+      additionalProperties: false
+      required: [id, stand_id, stand_name, code, name, unit_price, unit_price_minor, currency, stock, sold, available_quantity, version]
+      properties:
+        id: { type: string, format: uuid }
+        stand_id: { type: string, format: uuid }
+        stand_name: { type: string }
+        code: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        unit_price: { $ref: '#/components/schemas/MoneyAmount' }
+        unit_price_minor: { type: integer, minimum: 0 }
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
+        stock: { type: integer, minimum: 0 }
+        sold: { type: integer, minimum: 0 }
+        available_quantity: { type: integer, minimum: 0 }
+        version: { type: integer, minimum: 1 }
+    PublicOrderRequest:
       type: object
       additionalProperties: false
       required: [buyer_email, items]
@@ -991,9 +1200,94 @@ components:
         buyer_email:
           type: string
           format: email
+          maxLength: 254
+        buyer_name:
+          type: [string, 'null']
+          maxLength: 160
         items:
           type: array
           minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [event_product_id, quantity]
+            properties:
+              event_product_id: { type: string, format: uuid }
+              quantity: { type: integer, minimum: 1, maximum: 100 }
+    PublicOrderResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [sale_id, ticket_id, ticket_number, status, payment_status, buyer_email, total, currency, created_at, reservation_expires_at]
+          properties:
+            sale_id: { type: string, format: uuid }
+            ticket_id: { type: string, format: uuid }
+            ticket_number: { type: string }
+            status: { type: string, const: pending_payment }
+            payment_status: { type: string, const: to_verify }
+            buyer_email: { type: string, format: email }
+            buyer_name: { type: [string, 'null'] }
+            total: { $ref: '#/components/schemas/MoneyAmount' }
+            currency: { $ref: '#/components/schemas/CurrencyCode' }
+            created_at: { type: string, format: date-time }
+            reservation_expires_at: { type: string, format: date-time }
+    PaymentReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [confirm, reject]
+        provider_reference:
+          type: [string, 'null']
+          maxLength: 128
+    PaymentReviewResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [sale_id, payment_id, decision, sale_status, payment_status, reviewed_at]
+          properties:
+            sale_id: { type: string, format: uuid }
+            payment_id: { type: string, format: uuid }
+            decision: { type: string, enum: [confirm, reject] }
+            sale_status: { type: string, enum: [confirmed, cancelled] }
+            payment_status: { type: string, enum: [confirmed, rejected] }
+            reviewed_at: { type: string, format: date-time }
+    CreateSaleRequest:
+      type: object
+      additionalProperties: false
+      required: [buyer_email, payment_method, items]
+      properties:
+        buyer_email:
+          type: string
+          format: email
+          maxLength: 254
+        buyer_name:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 160
+        buyer_phone:
+          type: [string, 'null']
+          minLength: 3
+          maxLength: 40
+        payment_method:
+          type: string
+          const: cash
+          description: Solo efectivo está habilitado en esta primera implementación; otros medios esperan reglas de reserva y confirmación.
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
           items:
             type: object
             additionalProperties: false
@@ -1005,6 +1299,211 @@ components:
               quantity:
                 type: integer
                 minimum: 1
+                maximum: 10000
+    SaleCatalogPageResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleCatalogProduct'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    SaleCatalogProduct:
+      type: object
+      additionalProperties: false
+      required: [id, stand_id, stand_name, code, name, unit_price, unit_price_minor, currency, stock, sold, available_quantity, status, active, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        stand_id:
+          type: string
+          format: uuid
+        stand_name:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        unit_price:
+          $ref: '#/components/schemas/MoneyAmount'
+        unit_price_minor:
+          type: integer
+          minimum: 0
+        currency:
+          $ref: '#/components/schemas/CurrencyCode'
+        stock:
+          type: integer
+          minimum: 0
+        sold:
+          type: integer
+          minimum: 0
+        available_quantity:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [active, paused]
+        active:
+          type: boolean
+        version:
+          type: integer
+          minimum: 1
+    SaleResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Sale'
+    SalePageResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sale'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    Sale:
+      type: object
+      additionalProperties: false
+      required: [id, organization_id, event_id, operator_user_id, channel, status, buyer_email, subtotal, discount_total, total, currency, payment, items, ticket, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        operator_user_id:
+          type: string
+          format: uuid
+        operator_name:
+          type: string
+        channel:
+          type: string
+          enum: [operator, online]
+        status:
+          type: string
+          enum: [pending_payment, confirmed, cancelled, refunded]
+        buyer_email:
+          type: string
+          format: email
+        buyer_name:
+          type: [string, 'null']
+        buyer_phone:
+          type: [string, 'null']
+        subtotal:
+          $ref: '#/components/schemas/MoneyAmount'
+        discount_total:
+          $ref: '#/components/schemas/MoneyAmount'
+        total:
+          $ref: '#/components/schemas/MoneyAmount'
+        currency:
+          $ref: '#/components/schemas/CurrencyCode'
+        payment:
+          $ref: '#/components/schemas/SalePayment'
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SaleItem'
+        ticket:
+          oneOf:
+            - $ref: '#/components/schemas/SaleTicket'
+            - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+        confirmed_at:
+          type: [string, 'null']
+          format: date-time
+        reservation_expires_at:
+          type: [string, 'null']
+          format: date-time
+    SaleItem:
+      type: object
+      additionalProperties: false
+      required: [id, event_product_id, product_code, product_name, unit_price, quantity, line_total]
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_product_id:
+          type: string
+          format: uuid
+        product_code:
+          type: string
+        product_name:
+          type: string
+        unit_price:
+          $ref: '#/components/schemas/MoneyAmount'
+        quantity:
+          type: integer
+          minimum: 1
+        line_total:
+          $ref: '#/components/schemas/MoneyAmount'
+        version:
+          type: integer
+          minimum: 1
+    SalePayment:
+      type: object
+      additionalProperties: false
+      required: [id, method, status, amount, currency]
+      properties:
+        id:
+          type: string
+          format: uuid
+        method:
+          type: string
+        status:
+          type: string
+          enum: [pending, to_verify, confirmed, rejected, cancelled, refunded]
+        amount:
+          $ref: '#/components/schemas/MoneyAmount'
+        currency:
+          $ref: '#/components/schemas/CurrencyCode'
+        confirmed_at:
+          type: [string, 'null']
+          format: date-time
+    SaleTicket:
+      type: object
+      additionalProperties: false
+      required: [id, ticket_number, qr_code, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_number:
+          type: string
+        qr_code:
+          type: string
+          minLength: 43
+          maxLength: 43
+          writeOnly: true
+        status:
+          type: string
+          enum: [pending, issued, active, partially_redeemed, redeemed, cancelled, void]
+    MoneyAmount:
+      type: string
+      pattern: '^\d{1,12}\.\d{2}$'
+      description: Importe decimal no negativo enviado como texto para evitar pérdida de precisión.
+      example: '120.00'
+    CurrencyCode:
+      type: string
+      pattern: '^[A-Z]{3}$'
+      example: BOB
     CreateExpenseRequest:
       type: object
       additionalProperties: false
@@ -1150,7 +1649,7 @@ components:
     PageMeta:
       type: object
       additionalProperties: false
-      required: [page, page_size, total]
+      required: [page, page_size, total, total_pages]
       properties:
         page:
           type: integer
@@ -1159,6 +1658,9 @@ components:
           type: integer
           minimum: 1
         total:
+          type: integer
+          minimum: 0
+        total_pages:
           type: integer
           minimum: 0
     ErrorResponse:

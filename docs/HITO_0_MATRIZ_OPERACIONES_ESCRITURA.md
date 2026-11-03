@@ -30,7 +30,7 @@
 
 | Operación / estado | Autorización | Bloqueos y transacción | Idempotencia y concurrencia | Auditoría |
 |---|---|---|---|---|
-| `CreateSale` / planned | `sale.write`; evento abierto | Venta, líneas, snapshots de precio, disponibilidad y ticket cuando aplique | Clave obligatoria; bloqueo/versionado de inventario; nunca disponibilidad negativa | `sale.created` con importes y referencias, sin datos sensibles |
+| `CreateSale` / **implemented para efectivo**, contrato HTTP v0.2 | `sale.write`; evento abierto; `catalog.read` permite seleccionar productos sin modificarlos | Venta, líneas con snapshots, pago confirmado, actualización de disponibilidad y ticket se guardan en una transacción mediante handler y repositorio Doctrine | Clave obligatoria; bloqueo `FOR UPDATE` de evento e inventario; el servidor calcula importes y nunca acepta precio del cliente; nunca disponibilidad negativa | `sale.created` con importes y referencias, sin correo del comprador ni otros datos sensibles |
 | `ConfirmPayment` / planned | `payment.review`; evento abierto | Pago, venta y habilitación/emisión de ticket | Clave obligatoria; bloqueo de pago; confirmación única | `payment.confirmed` o `payment.rejected` |
 | `RedeemTicket` / planned | `ticket.redeem`; evento abierto | Ticket, líneas y canje en la misma transacción | Clave obligatoria; bloqueo de ticket; cantidad canjeada no supera emitida | `ticket.redeemed` con cantidades |
 | `AssignTickets` / planned | `course.manage`; evento abierto | Asignaciones a curso/grupo; no crea venta ni ingreso | Clave obligatoria; unicidad por ticket/destino definida en esquema | `ticket.allocated` |
