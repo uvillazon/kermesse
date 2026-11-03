@@ -24,7 +24,10 @@ Aprendido el 2026-11-03 trabajando desde Claude Code en la nube (`/home/user/ker
   4. `KERMESFERA_INTEGRATION_DATABASE_URL=<url> DATABASE_SERVER_VERSION=10.11.14-MariaDB php vendor/bin/phpunit`
      (no `composer test`: falla como root). Para levantar la app (capturas), `COMPOSER_ALLOW_SUPERUSER=1
      composer install` genera `vendor/autoload_runtime.php`, y un `backend/.env` local (ignorado por git).
-  5. Arrancar el kernel regenera `backend/config/reference.php`: `git checkout` antes de commitear.
+  5. Arrancar el kernel regenera `backend/config/reference.php`: `git checkout` antes de commitear, y **no usar
+     `git stash -u`** mientras esté modificado (el `pop` se corta a medias y deja archivos nuevos duplicados).
+  `composer install` falla con dist desde GitHub ("Could not authenticate") y cae a clonar desde la fuente:
+  funciona, pero tarda varios minutos; lanzarlo en segundo plano.
   Las credenciales reales nunca se versionan; las de la base desechable no salen del contenedor.
   Si de golpe todas las pruebas de integración dan `Connection refused`, MariaDB se detuvo (pasó el
   2026-11-03): repetir el paso 2 antes de buscar el error en el código.
