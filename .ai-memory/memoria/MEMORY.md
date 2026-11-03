@@ -1,0 +1,3 @@
+- [Proyecto Kermesfera](project-kermesfera.md) — objetivo, stack y estado actual
+- [Sin Claude-Mem](feedback-sin-claude-mem.md) — no usar Claude-Mem ni servicios externos de memoria
+- [Protocolo de memoria](project-protocolo-memoria.md) — dónde vive la memoria y por qué dentro del repo
