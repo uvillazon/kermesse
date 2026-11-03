@@ -8,8 +8,7 @@
 - Comando `app:users:set-password <correo>` (oculta o `--from-env`) para usuarios de desarrollo.
 - Cuota de login por IP y por cuenta: `RATE_LIMIT_LOGIN_PER_MINUTE` (10 por defecto).
 - Frontend: cuentas demo movidas a `environment.development.ts`; el paquete de producción no las trae.
-- Pruebas: `LoginControllerIntegrationTest`, casos nuevos en aceptación, unitarias de política, hasher y
-  comando. Verificadas en la nube con MariaDB 10.11 temporal (no 10.4.18).
+- Pruebas: `LoginControllerIntegrationTest`, casos nuevos en aceptación y unitarias. Verificadas en la nube con MariaDB 10.11 temporal (no 10.4.18).
 
 ## Qué se decidió y por qué
 - Ver [[project-contrasenas-login]]. Clave: una invitación nunca reemplaza una contraseña existente.
@@ -20,4 +19,14 @@
 - En local: `php bin/console doctrine:migrations:migrate` y asignar contraseña a cada cuenta demo con el
   comando (hasta entonces el login de esas cuentas responde 401).
 - Pantalla Angular de aceptación de invitación con contraseña; recuperación/cambio de contraseña.
-- Fallas previas no tocadas: `TransactionalExecutorTest` (sin driver) y 5 de `CreateSaleControllerIntegrationTest` (500).
+
+## Cierre de sesión
+- PR https://github.com/uvillazon/kermesse/pull/6 fusionado en `master` (squash).
+- Siguiente paso concreto: en local migrar y correr
+  `app:users:set-password` para las tres cuentas demo y probar el login desde Angular.
+
+## Descartado
+- Dejar `DEMO_ACCOUNTS` condicionado con `environment.production ? [] : [...]`: el arreglo seguía en el
+  paquete de producción; se movió a un archivo que solo importa la configuración de desarrollo.
+- Leer la contraseña con `requiredString()`: recorta espacios y alteraría el secreto.
+- Permitir que una invitación reemplace una contraseña existente: abriría toma de cuentas con un token filtrado.
