@@ -1,8 +1,8 @@
 # Hito 0 — Matriz de roles y permisos
 
-**Estado:** implementación temporal en memoria; decisiones adicionales pendientes
-**Versión:** 0.2
-**Fecha:** 2026-10-29
+**Estado:** borrador para validación; implementación temporal en memoria; decisiones adicionales pendientes
+**Versión:** 0.3 (aplica los hallazgos 2–4 de `HITO_0_VALIDACION_ROLES_TRAZABILIDAD.md` y revalida con las reglas del 2026-10-29)
+**Fecha:** 2026-11-03
 **Fuente funcional:** `docs/REGLAS_DE_NEGOCIO.md`
 
 ## 1. Criterios de autorización
@@ -11,7 +11,7 @@
 2. El alcance por defecto es denegado. Tener acceso a una organización no implica acceso a todos sus eventos.
 3. Una membresía de evento puede ser operativa o histórica. La membresía histórica solo concede consulta y exportación explícita.
 4. El backend es la autoridad. Angular, Flutter y el portal público solo ocultan o muestran acciones; nunca sustituyen la autorización de API.
-5. Todas las operaciones de escritura requieren que el evento esté abierto. Un evento `closed` permite únicamente lecturas y exportaciones autorizadas.
+5. Todas las operaciones de escritura requieren que el evento esté abierto. Un evento `closed` permite únicamente lecturas y exportaciones autorizadas. Además, por `RN-COM-001`, abrir ventas o canjes exige que el evento tenga habilitación comercial vigente; un borrador sin habilitación solo admite preparación (catálogo, responsables).
 6. Los permisos se asignan por capacidad, no por pantalla. Una pantalla puede requerir varios permisos y una misma acción debe comportarse igual en web, móvil y API.
 7. Un usuario puede tener más de un rol en el mismo evento; la autorización efectiva es la unión de permisos, salvo que una regla específica exija aprobación de otro responsable.
 8. Los intentos fuera de alcance se responden como no autorizados y se auditan cuando sean relevantes, sin revelar datos de otra organización.
@@ -51,6 +51,7 @@ No se define en esta matriz un rol de soporte global multi-organización. Si se 
 | `sale.write` | Registrar venta rápida o venta autorizada | Evento abierto |
 | `payment.review` | Verificar, confirmar, rechazar, anular o devolver pagos | Evento abierto |
 | `ticket.read` | Consultar tickets y asignaciones permitidas | Evento |
+| `ticket.resend` | Reintentar el envío de un ticket o correo ya emitido, con auditoría (`US-H0-009`) | Evento abierto |
 | `ticket.redeem` | Validar y canjear ticket | Evento abierto |
 | `report.read` | Consultar reportes operativos o financieros permitidos | Evento |
 | `report.export` | Exportar PDF/Excel permitido | Evento |
@@ -58,7 +59,7 @@ No se define en esta matriz un rol de soporte global multi-organización. Si se 
 | `event.close` | Revisar pendientes y confirmar cierre definitivo | Evento abierto |
 | `audit.read` | Consultar auditoría autorizada | Organización/evento |
 
-`PUBLIC_BUYER` usa endpoints públicos separados (`catalog.read.public`, `preorder.write`, `payment.status.read.own`, `ticket.resend.own`) y nunca recibe permisos internos de esta tabla.
+`PUBLIC_BUYER` usa endpoints públicos separados (`catalog.read.public`, `preorder.write`, `payment.status.read.own`, `ticket.resend.own`) y nunca recibe permisos internos de esta tabla. Cada uno tiene su historia en la trazabilidad (`US-H0-024` a `US-H0-026`) y su límite de peticiones (`RN-SEG-001`).
 
 ## 4. Matriz de permisos
 
@@ -83,8 +84,9 @@ Leyenda: **✓** permitido; **—** denegado; **H** permitido solo en eventos hi
 | `course.manage` | ✓ | — | — | — | — | — | — |
 | `expense.write` | A | A | — | — | — | — | — |
 | `sale.write` | A | — | ✓ | — | — | — | — |
-| `payment.review` | A | ✓ | — | ✓ | — | — | — |
+| `payment.review` | A | A | — | A | — | — | — |
 | `ticket.read` | ✓ | A | A | A | ✓ | A | H |
+| `ticket.resend` | ✓ | — | A | — | — | — | — |
 | `ticket.redeem` | A | — | — | — | ✓ | — | — |
 | `report.read` | ✓ | ✓ | A | A | A | ✓ | H |
 | `report.export` | A | ✓ | — | — | — | ✓ | H |
@@ -93,6 +95,13 @@ Leyenda: **✓** permitido; **—** denegado; **H** permitido solo en eventos hi
 | `audit.read` | A | A | — | — | — | — | H |
 
 Interpretación de `A`: el permiso debe limitarse al evento, puesto, tipo de reporte o dato operativo que la organización asigne. Por ejemplo, un operador puede consultar el catálogo de su puesto y un responsable de evento puede aprobar el cierre solo si la organización lo delega.
+
+Cambios de la v0.3 respecto de la v0.2:
+
+- `ticket.resend` (hallazgo 2): permiso interno nuevo. `EVENT_MANAGER` lo recibe de base; `SALES_OPERATOR` solo como delegación `A`, limitada a ventas de sus puestos. Reintentar un envío no crea venta ni ticket nuevos y se audita.
+- `payment.review` pasa de ✓ a `A` para `FINANCE_REVIEWER` y `PAYMENT_REVIEWER` (hallazgo 4): hasta decidir si ambos roles se separan, ninguno lo recibe de base y debe delegarse explícitamente. **Esto cambia el comportamiento actual de `RolePermissionMap`** (hoy ambos lo tienen de base); el cambio de código queda aparte y requiere aprobación.
+- Doble revisión: si se decide que el cierre requiere revisión financiera, un mismo usuario no puede ser quien prepara y quien aprueba (ver sección 6).
+- `event.close` ya estaba en `P` para todos los roles; el hallazgo 4 original quedó resuelto en ese punto.
 
 La implementación temporal concede automáticamente solo los permisos `✓`. Los permisos `A` se representan como delegaciones adicionales explícitas y se deniegan si no fueron agregados. `H` exige evento cerrado, asignación histórica activa y rol `HISTORICAL_VIEWER`. `event.close` permanece bloqueado para todos, incluso como delegación adicional, hasta aprobar su regla.
 
@@ -106,6 +115,10 @@ La implementación temporal concede automáticamente solo los permisos `✓`. Lo
 | Usuario con roles combinados | Unir permisos solo dentro de los eventos coincidentes; no ampliar organización ni permitir escritura en eventos cerrados. |
 | Venta pública | Aislar por URL pública de organización/evento y devolver solo catálogo/publicación y estado de la propia compra. |
 | Cambio de permisos | Requerir `org.manage_members`, registrar actor, fecha, evento, permisos anteriores y nuevos. |
+| Evento sin habilitación comercial (`RN-COM-001`) | Rechazar ventas, pagos y canjes aunque el evento esté abierto y el usuario tenga el permiso; permitir la preparación. |
+| Usuario suspendido o revocado (`RN-USR-001`) | Denegar nuevos accesos de inmediato, invalidar delegaciones y conservar su auditoría histórica. |
+| Organización sin eventos activos (`RN-HIS-001`) | Mantener consulta y exportación de eventos cerrados a quien tenga acceso histórico vigente. |
+| Facturación (`RN-FAC-001/002`) | Sin permisos en la etapa 1: ningún rol emite ni presenta facturas. Los permisos fiscales se definirán en la etapa 2. |
 
 ## 6. Decisiones pendientes de validación
 
@@ -115,6 +128,9 @@ La implementación temporal concede automáticamente solo los permisos `✓`. Lo
 - Confirmar qué reportes puede exportar cada rol y si las exportaciones pesadas son asíncronas.
 - Confirmar duración y revocación de una membresía histórica.
 - Confirmar si `ORG_OWNER` y `ORG_ADMIN` tendrán exactamente los mismos permisos organizacionales o si ciertas decisiones comerciales quedarán reservadas al responsable principal.
+- Definir quién compra o solicita la habilitación comercial de un evento (`RN-COM-001`) y qué permiso la protege. Hoy ningún permiso de la tabla la cubre y no existe rol de plataforma.
+- Definir quién autoriza `event.close`, lo que sigue bloqueando el cierre (`US-H0-016`). Opciones a decidir: responsable de evento con delegación, revisor financiero, o doble aprobación.
+- Confirmar si `ticket.resend` debe poder usarlo `TICKET_OPERATOR` y a qué ventas se limita `SALES_OPERATOR`.
 
 ## 7. Implementación temporal sin base de datos
 

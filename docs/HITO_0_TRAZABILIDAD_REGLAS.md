@@ -1,8 +1,8 @@
 # Hito 0 — Historias y trazabilidad de reglas
 
 **Estado:** propuesta base para revisión
-**Versión:** 0.2
-**Fecha:** 2026-10-29
+**Versión:** 0.3
+**Fecha:** 2026-11-03
 **Fuentes:** `docs/REGLAS_DE_NEGOCIO.md`, `docs/PLAN_DE_TRABAJO_KERMESSE.md`
 
 ## 1. Convenciones
@@ -38,6 +38,9 @@
 | `US-H0-021` | Como organización, quiero comprar o recibir habilitación para operar un evento sin pagar por usuario. | P0 | `RN-COM-001`, `RN-USR-001` | Solo eventos habilitados operan; agregar usuarios no altera el precio y todos conservan permisos por evento. | `API-ENTITLEMENT-01`, `DOM-ORDER-01` |
 | `US-H0-022` | Como organización sin eventos activos, quiero consultar y exportar mi historial autorizado. | P0 | `RN-HIS-001`, `RN-PER-002`, `RN-CIE-003` | No comprar otro evento no elimina ni bloquea el acceso histórico permitido. | `AUTH-HISTORY-02`, `API-HISTORY-01` |
 | `US-H0-023` | Como organización, quiero dejar preparada una empresa emisora por evento para una futura etapa fiscal. | P1 | `RN-FAC-001`, `RN-FAC-002` | La etapa 1 puede registrar la frontera futura, pero no emite ni presenta documentos como facturas fiscales. | `DOM-TAX-BOUNDARY-01`, `API-TAX-CONFIG-FUTURE` |
+| `US-H0-024` | Como comprador público, quiero ver el catálogo publicado de un evento y armar una preventa sin cuenta. | P0 | `RN-VEN-001`, `RN-PRO-001`, `RN-COM-001`, `RN-ORG-001` | Solo se ve lo publicado de un evento habilitado; no se filtran datos de otra organización ni de compradores. | `API-PUBLIC-CATALOG-01`, `API-PUBLIC-ORDER-01` |
+| `US-H0-025` | Como comprador público, quiero consultar el estado de pago de mi propia compra. | P0 | `RN-PAG-001`, `RN-ORG-001` | Solo se obtiene el estado de la compra propia; conocer otro identificador no revela datos. | `API-PUBLIC-STATUS-01`, `AUTH-PUBLIC-01` |
+| `US-H0-026` | Como comprador público, quiero pedir el reenvío de mi ticket sin exponer el de otros. | P1 | `RN-TIC-001`, `RN-PAG-002`, `RN-SEG-001` | El reenvío se limita a la compra propia, con límite de peticiones y registro auditable. | `API-PUBLIC-RESEND-01`, `API-RATE-01` |
 
 ## 3. Cobertura por regla
 
@@ -49,7 +52,7 @@
 | `RN-PRO-001` / `RN-PRO-002` | `US-H0-003` | Completa para disponibilidad y precio histórico. |
 | `RN-CUR-001` / `RN-CUR-002` | `US-H0-004` | Completa para semántica de asignación; falta decidir reserva opcional. |
 | `RN-VEN-001` a `RN-VEN-003` | `US-H0-005` a `US-H0-007` | Contrato de venta e idempotencia definido; infraestructura idempotente probada, módulo de venta aún planificado. |
-| `RN-PAG-001` / `RN-PAG-002` | `US-H0-008`, `US-H0-009` | Parcial: falta proveedor y flujo definitivo de QR bancario. |
+| `RN-PAG-001` / `RN-PAG-002` | `US-H0-008`, `US-H0-009`, `US-H0-025`, `US-H0-026` | Parcial: falta proveedor y flujo definitivo de QR bancario. |
 | `RN-TIC-001` / `RN-CAN-001` | `US-H0-010`, `US-H0-011` | Completa para unicidad y concurrencia propuesta. |
 | `RN-GAS-001` | `US-H0-012`, `US-H0-014` | Completa para registro y balance, pendiente criterio contable. |
 | `RN-REP-001` | `US-H0-013`, `US-H0-017` | Parcial: falta catálogo final de reportes por rol. |
@@ -58,13 +61,13 @@
 | `RN-SEG-001` / `RN-SEG-002` | `US-H0-018`, `US-H0-019` | Parcial: valores de límites dependen de capacidad. |
 | `RN-CAR-001` | `US-H0-019` | Completa como escenario; cifras objetivo pendientes. |
 | `RN-PLT-001` | `US-H0-020` | Completa como requisito de aislamiento; falta contrato técnico del tenant. |
-| `RN-COM-001` / `RN-USR-001` | `US-H0-021` | Parcial: faltan precio, activación, cancelación y devolución. |
+| `RN-COM-001` / `RN-USR-001` | `US-H0-021`, `US-H0-024` | Parcial: faltan precio, activación, cancelación y devolución. |
 | `RN-HIS-001` | `US-H0-022` | Parcial: acceso aprobado; falta política de baja y retención. |
 | `RN-FAC-001` / `RN-FAC-002` | `US-H0-023` | Diferida a etapa 2; la etapa 1 solo conserva la frontera del módulo. |
 
 ## 4. Vacíos que bloquean los siguientes contratos
 
-1. Aprobar la matriz de roles y los permisos con alcance adicional.
+1. Aprobar la matriz de roles v0.3 y los permisos con alcance adicional; decidir quién autoriza `event.close` y quién gestiona la habilitación comercial.
 2. Confirmar criterios contables para costos, mermas, sobrantes y saldos.
 3. Elegir el canal de QR bancario y definir qué estados llegan automáticamente.
 4. Definir destinatario, reintentos y retención de correos/tickets.
