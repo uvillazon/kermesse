@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, LOCALE_ID, computed, inject, signal } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -12,6 +12,7 @@ import { EventContextService, onActiveEventChange } from '../../core/services/ev
 import { describeLoadError } from '../../core/services/load-error';
 import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 import { FechaPipe } from '../../core/ui/fecha.pipe';
+import { AuditEntry, auditAreaLabel, describeAudit } from './audit-description';
 
 interface ApiProductReport {
   id: string;
@@ -34,17 +35,7 @@ interface ApiExpense {
   occurred_at?: string;
 }
 
-interface ApiAuditLog {
-  id: string;
-  action: string;
-  aggregate_type: string;
-  aggregate_id: string;
-  request_id: string;
-  actor_name: string;
-  actor_email: string;
-  metadata: Record<string, any>;
-  created_at: string;
-}
+type ApiAuditLog = AuditEntry;
 
 @Component({
   selector: 'app-reports',
@@ -300,7 +291,7 @@ interface ApiAuditLog {
             <i class="pi pi-search"></i>
             <input
               type="text"
-              placeholder="Búsqueda rápida por acción, usuario, entidad o ID..."
+              placeholder="Buscar por persona, producto, ticket..."
               [ngModel]="auditSearch()"
               (ngModelChange)="auditSearch.set($event)"
             />
@@ -313,9 +304,9 @@ interface ApiAuditLog {
           <div class="grid-filters">
             <span class="filter-label"><i class="pi pi-filter"></i> Filtros:</span>
             <select class="filter-select" [ngModel]="auditTypeFilter()" (ngModelChange)="auditTypeFilter.set($event)">
-              <option value="">Todas las entidades</option>
-              @for (tp of auditAggregateTypes(); track tp) {
-                <option [value]="tp">{{ tp }}</option>
+              <option value="">Todo</option>
+              @for (area of auditAreas(); track area) {
+                <option [value]="area">{{ area }}</option>
               }
             </select>
             @if (auditSearch() || auditTypeFilter()) {
@@ -329,38 +320,36 @@ interface ApiAuditLog {
         <p-table
           [value]="filteredAuditLogs()"
           [paginator]="true"
-          [rows]="5"
-          [rowsPerPageOptions]="[5, 10, 25]"
+          [rows]="10"
+          [rowsPerPageOptions]="[10, 25, 50]"
           [showCurrentPageReport]="true"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} eventos de auditoría"
+          currentPageReportTemplate="{first}-{last} de {totalRecords} cambios"
           styleClass="p-datatable-sm"
         >
           <ng-template #header>
             <tr>
-              <th>Fecha / Hora</th>
-              <th>Acción</th>
-              <th>Entidad</th>
-              <th>Actor</th>
-              <th>Detalle de la operación</th>
+              <th style="width: 8.5rem">Cuándo</th>
+              <th style="width: 11rem">Quién</th>
+              <th>Qué pasó</th>
+              <th style="width: 7rem">Área</th>
             </tr>
           </ng-template>
           <ng-template #body let-a>
             <tr>
-              <td><small class="mono">{{ a.created_at | fecha }}</small></td>
-              <td><span class="pill cyan mono">{{ a.action }}</span></td>
-              <td><span class="pill gray">{{ a.aggregate_type }}</span></td>
+              <td><small class="audit-when">{{ a.created_at | fecha }}</small></td>
+              <td><b>{{ a.actor_name }}</b></td>
               <td>
-                <b>{{ a.actor_name }}</b>
-                @if (a.actor_email) {
-                  <br /><small class="muted">{{ a.actor_email }}</small>
+                <span class="audit-what">{{ a.desc.title }}</span>
+                @if (a.desc.detail) {
+                  <small class="muted audit-detail">{{ a.desc.detail }}</small>
                 }
               </td>
-              <td><small class="mono muted">{{ formatAuditMetadata(a) }}</small></td>
+              <td><span class="pill gray">{{ a.area }}</span></td>
             </tr>
           </ng-template>
           <ng-template #emptymessage>
             <tr>
-              <td colspan="5">
+              <td colspan="4">
                 <div class="empty-grid-state">
                   <i class="pi pi-history"></i>
                   <p>No se encontraron registros de auditoría para los filtros seleccionados.</p>
@@ -429,6 +418,9 @@ interface ApiAuditLog {
   `,
   styles: [`
     .neg { color: var(--kf-red) !important; }
+    .audit-when { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--kf-muted); }
+    .audit-what { display: block; font-weight: 600; color: var(--kf-ink); }
+    .audit-detail { display: block; margin-top: .15rem; line-height: 1.4; }
     .close .panel-body { display: flex; gap: 1.5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
     .close .panel-body > div { flex: 1; min-width: 280px; }
     .close h2 { color: var(--kf-primary); font-size: 1.05rem; margin: 0 0 .4rem; display: flex; align-items: center; gap: .4rem; }
@@ -471,8 +463,15 @@ export class ReportsComponent {
     Array.from(new Set(this.expenseRows().map((e) => e.category))).sort()
   );
 
-  protected readonly auditAggregateTypes = computed(() =>
-    Array.from(new Set(this.auditLogs().map((a) => a.aggregate_type))).sort()
+  private readonly locale = inject(LOCALE_ID);
+
+  /** Historial traducido a frases: nunca se muestran códigos de acción, UUID ni JSON. */
+  protected readonly auditRows = computed(() =>
+    this.auditLogs().map((a) => ({ ...a, desc: describeAudit(a, this.locale), area: auditAreaLabel(a.aggregate_type) }))
+  );
+
+  protected readonly auditAreas = computed(() =>
+    Array.from(new Set(this.auditRows().map((a) => a.area))).sort()
   );
 
   protected readonly filteredProducts = computed(() => {
@@ -498,10 +497,10 @@ export class ReportsComponent {
   protected readonly filteredAuditLogs = computed(() => {
     const q = this.auditSearch().trim().toLowerCase();
     const tp = this.auditTypeFilter();
-    return this.auditLogs().filter((a) => {
-      if (tp && a.aggregate_type !== tp) return false;
+    return this.auditRows().filter((a) => {
+      if (tp && a.area !== tp) return false;
       if (q) {
-        const hay = `${a.action} ${a.aggregate_type} ${a.actor_name} ${a.actor_email} ${JSON.stringify(a.metadata)}`.toLowerCase();
+        const hay = `${a.desc.title} ${a.desc.detail ?? ''} ${a.area} ${a.actor_name} ${a.actor_email}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -563,15 +562,6 @@ export class ReportsComponent {
       this.auditLogs.set([]);
       this.loadError.set(describeLoadError(err, 'No se pudieron cargar los datos financieros del evento.'));
     }
-  }
-
-  formatAuditMetadata(a: ApiAuditLog): string {
-    const entries = Object.entries(a.metadata || {});
-    if (entries.length === 0) return a.aggregate_id.slice(0, 8);
-    return entries
-      .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
-      .join(' · ')
-      .slice(0, 120);
   }
 
   openExpenseDialog(): void {
