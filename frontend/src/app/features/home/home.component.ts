@@ -7,7 +7,8 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { EventContextService } from '../../core/services/event-context.service';
-import { EXPENSES } from '../../core/mock/mock-data';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
 interface HomeProduct {
   id: string;
@@ -50,13 +51,14 @@ interface HomeExpense {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe, RouterModule, ButtonModule, TableModule],
+  imports: [CommonModule, FormsModule, DecimalPipe, RouterModule, ButtonModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="loadData()" />
       <div class="page-header">
         <div>
-          <span class="eyebrow">Panel del evento &bull; {{ ctx.active().date }}</span>
-          <h1>{{ ctx.active().name }}</h1>
+          <span class="eyebrow">Panel del evento &bull; {{ ctx.active()?.date }}</span>
+          <h1>{{ ctx.active()?.name }}</h1>
           <p>Resumen operativo en tiempo real conectado a MariaDB: ventas, pagos QR, tickets y recaudación por puesto.</p>
         </div>
         <div class="page-actions">
@@ -229,7 +231,8 @@ export class HomeComponent implements OnInit {
 
   protected readonly products = signal<HomeProduct[]>([]);
   protected readonly sales = signal<HomeSale[]>([]);
-  protected readonly expenses = signal<HomeExpense[]>(EXPENSES);
+  protected readonly expenses = signal<HomeExpense[]>([]);
+  protected readonly loadError = signal<string | null>(null);
 
   // Filtros del grid de ventas en Home
   protected readonly saleSearch = signal('');
@@ -287,18 +290,22 @@ export class HomeComponent implements OnInit {
 
   async loadData(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.loadError.set(null);
     try {
       const [prodRes, salesRes, expRes] = await Promise.all([
         firstValueFrom(this.http.get<{ data: HomeProduct[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products`)),
         firstValueFrom(this.http.get<{ data: HomeSale[] }>(`/organizations/${orgId}/events/${eventId}/sales`)),
         firstValueFrom(this.http.get<{ data: HomeExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
       ]);
-      if (prodRes?.data) this.products.set(prodRes.data);
-      if (salesRes?.data) this.sales.set(salesRes.data);
-      if (expRes?.data && expRes.data.length > 0) this.expenses.set(expRes.data);
+      this.products.set(prodRes?.data ?? []);
+      this.sales.set(salesRes?.data ?? []);
+      this.expenses.set(expRes?.data ?? []);
     } catch (err) {
-      console.warn('[HomeComponent] Error cargando datos del backend:', err);
+      this.products.set([]);
+      this.sales.set([]);
+      this.expenses.set([]);
+      this.loadError.set(describeLoadError(err, 'No se pudo cargar el panel del evento.'));
     }
   }
 

@@ -1,29 +1,34 @@
 ---
 name: project-frontend-auditoria
-description: Auditoría del frontend Angular del 2026-11-03 — qué está conectado, dónde se cuelan datos simulados y qué falta
+description: Auditoría del frontend Angular del 2026-11-03 — datos de ejemplo ya eliminados; qué queda pendiente
 metadata:
   type: project
 ---
 
-Auditoría del 2026-11-03 sobre `frontend/` contra las rutas reales de Symfony. Build OK, 1 solo test (`app.spec.ts`).
+Auditoría del 2026-11-03 sobre `frontend/` contra las rutas reales de Symfony.
 
-**Problema principal — datos simulados que se hacen pasar por reales:** `core/mock/mock-data.ts` sigue siendo el
-valor inicial de varias señales y queda en pantalla si la API falla (solo `console.warn`) **o si devuelve una lista
-vacía** (`length > 0`). Casos: gastos en Inicio y Reportes (un evento sin gastos muestra gastos falsos y el balance
-sale mal), miembros e invitaciones en Accesos, asignaciones por curso en Tickets, eventos en `EventContextService`,
-puestos/productos iniciales en Catálogo, nombre de organización/evento en tienda pública y topbar.
+**Corregido el mismo día — datos de ejemplo:** se borró `core/mock/mock-data.ts`. Los tipos y etiquetas viven en
+`core/models/domain.ts`. Las pantallas muestran lista vacía o un aviso `app-load-error-banner` con "Reintentar";
+`EventContextService` expone `state` (`loading|ready|error`), `active()` puede ser `null` y el layout no
+renderiza pantallas sin evento (salvo `/events`, para crear el primero). El botón "Cerrar evento" quedó
+desactivado con explicación: antes solo cambiaba el estado en memoria.
 
-**Otros hallazgos:**
-- `CURRENT_ORG_ID` está fijo en `event-context.service.ts`; no sale del login/JWT.
-- "Cerrar evento" en Reportes solo cambia el estado en memoria (`closeActive`), sin llamar a la API: al recargar el
-  evento vuelve a abierto. Coherente con que `event.close` está bloqueado ([[project-matriz-roles-v03]]).
-- No hay control de UI por rol: cualquier usuario autenticado ve todos los menús y botones.
-- `ApiService` no lo usa nadie; cada componente llama a `HttpClient` a mano.
-- `environment.prod.ts` apunta a `http://127.0.0.1:8000`.
-- Endpoints del backend sin pantalla: `ownership-transfers`, `invitations/accept`, borrado de acceso a nivel
-  organización. Los de OpenAPI `exports`, `reports/balance`, `closure`, `payments/.../confirmation` tampoco existen
-  en el backend (solo contrato).
+**Regla (decidida con el usuario):** nunca mostrar datos inventados como fallback. Ante error, aviso visible;
+ante lista vacía, vacío. Test de regresión en `features/screens-without-mock-data.spec.ts`.
 
-**Why:** el usuario puede tomar decisiones con números falsos sin enterarse; es lo primero a corregir.
-**How to apply:** al tocar una pantalla, quitar el mock como valor inicial, mostrar estado vacío/error real y
-añadir al menos un test del componente.
+**Pendiente:**
+- `CURRENT_ORG_ID` fijo en `event-context.service.ts`; el login no devuelve organización.
+- Sin control de UI por rol: cualquier usuario autenticado ve todos los menús y botones.
+- Inicio, Reportes y Ventas cargan en `ngOnInit`: al cambiar de evento en la barra superior siguen mostrando
+  los datos del evento anterior hasta navegar. Accesos, Catálogo y Tickets sí recargan (usan `effect`).
+- Backend: `ListOrganizationEventsController` devuelve `'28 oct 2026'` si el evento no tiene `starts_at`.
+- `ApiService` sin uso; `environment.prod.ts` apunta a `127.0.0.1:8000`; el login enlaza a `/tienda/halloween-2026`.
+- Endpoints sin pantalla: `ownership-transfers`, `invitations/accept`. En OpenAPI pero no en el backend:
+  `exports`, `reports/balance`, `closure`, `payments/.../confirmation`.
+
+**Ojo en tests:** las tablas `p-table` de PrimeNG no pintan filas en jsdom (ni la cabecera). Revisar solo el DOM
+deja pasar datos falsos; el spec revisa también el valor de todas las señales del componente. Se comprobó
+reinsertando un gasto falso: el test falló como debía.
+
+**Why:** el usuario podía decidir con números falsos sin enterarse (un evento sin gastos mostraba gastos inventados).
+Ver [[project-matriz-roles-v03]] para el bloqueo de `event.close`.

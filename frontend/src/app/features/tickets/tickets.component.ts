@@ -7,7 +7,8 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { EventContextService } from '../../core/services/event-context.service';
-import { COURSE_ASSIGNMENTS } from '../../core/mock/mock-data';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
 type Tab = 'redeem' | 'list' | 'courses';
 
@@ -59,9 +60,10 @@ export interface ApiTicket {
 @Component({
   selector: 'app-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule],
+  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
           <span class="eyebrow"><i class="pi pi-qrcode"></i> Operación en puesto &bull; Backend MariaDB</span>
@@ -770,7 +772,10 @@ export class TicketsComponent {
   protected readonly standFilter = signal('all');
 
   // Filtros y búsqueda rápida para Grid de Cursos
-  protected readonly courses = signal<any[]>(COURSE_ASSIGNMENTS);
+  protected readonly courses = signal<any[]>([]);
+  private readonly ticketsError = signal<string | null>(null);
+  private readonly coursesError = signal<string | null>(null);
+  protected readonly loadError = computed(() => this.ticketsError() ?? this.coursesError());
   protected readonly courseSearch = signal('');
   protected readonly courseLevelFilter = signal('all');
   protected readonly courseStatusFilter = signal('all');
@@ -853,18 +858,23 @@ export class TicketsComponent {
     });
   }
 
+  reload(): void {
+    this.loadTickets();
+    this.loadCourseAllocations();
+  }
+
   async loadCourseAllocations(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.coursesError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: any[] }>(`/organizations/${orgId}/events/${eventId}/course-allocations`)
       );
-      if (res?.data && res.data.length > 0) {
-        this.courses.set(res.data);
-      }
+      this.courses.set(res?.data ?? []);
     } catch (err) {
-      console.warn('[TicketsComponent] Usando cursos iniciales:', err);
+      this.courses.set([]);
+      this.coursesError.set(describeLoadError(err, 'No se pudieron cargar las asignaciones por curso.'));
     }
   }
 
@@ -874,7 +884,7 @@ export class TicketsComponent {
     this.errorMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
 
     try {
       await firstValueFrom(
@@ -906,19 +916,21 @@ export class TicketsComponent {
 
   async loadTickets(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.ticketsError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiTicket[] }>(`/organizations/${orgId}/events/${eventId}/tickets`)
       );
-      if (res?.data) {
-        this.tickets.set(res.data);
-        if (!this.selectedTicketId() && res.data.length > 0) {
-          this.selectedTicketId.set(res.data[0].id);
-        }
+      const list = res?.data ?? [];
+      this.tickets.set(list);
+      if (!list.some((t) => t.id === this.selectedTicketId())) {
+        this.selectedTicketId.set(list[0]?.id ?? null);
       }
     } catch (err) {
-      console.warn('[TicketsComponent] Error cargando tickets de la API:', err);
+      this.tickets.set([]);
+      this.selectedTicketId.set(null);
+      this.ticketsError.set(describeLoadError(err, 'No se pudieron cargar los tickets del evento.'));
     }
   }
 
@@ -980,7 +992,7 @@ export class TicketsComponent {
     this.errorMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     const idempotencyKey = `redeem-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
     try {

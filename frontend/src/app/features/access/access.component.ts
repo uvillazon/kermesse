@@ -8,7 +8,9 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { EventContextService } from '../../core/services/event-context.service';
-import { EventRole, INVITATIONS, MEMBERS, Member, ROLE_LABELS } from '../../core/mock/mock-data';
+import { EventRole, Member, ROLE_LABELS } from '../../core/models/domain';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
 const ORG_ACCESS: Record<string, string> = {
   owner: 'Propietario',
@@ -19,9 +21,10 @@ const ORG_ACCESS: Record<string, string> = {
 @Component({
   selector: 'app-access',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, DialogModule, InputTextModule, TableModule],
+  imports: [CommonModule, FormsModule, ButtonModule, DialogModule, InputTextModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
           <span class="eyebrow">Administración &bull; Backend MariaDB</span>
@@ -49,7 +52,7 @@ const ORG_ACCESS: Record<string, string> = {
       <section class="panel">
         <div class="panel-head">
           <div>
-            <h2><i class="pi pi-users"></i> Personas con acceso a {{ ctx.active().name }}</h2>
+            <h2><i class="pi pi-users"></i> Personas con acceso a {{ ctx.active()?.name }}</h2>
             <small class="muted">Control de membresías organizacionales y roles operativos por evento.</small>
           </div>
           <span class="grid-meta">{{ filteredMembers().length }} de {{ members().length }} personas</span>
@@ -294,7 +297,7 @@ const ORG_ACCESS: Record<string, string> = {
         <input pInputText class="w-full" [(ngModel)]="inviteEmail" placeholder="persona@correo.com" />
       </div>
       <div class="form-row">
-        <label>Roles en {{ ctx.active().name }}</label>
+        <label>Roles en {{ ctx.active()?.name }}</label>
         <div class="checks">
           @for (r of roleKeys; track r) {
             <label>
@@ -324,7 +327,7 @@ const ORG_ACCESS: Record<string, string> = {
       [draggable]="false"
     >
       <p class="muted" style="margin-top: 0">
-        Selecciona los roles operativos para <b>{{ editingMember()?.email }}</b> en <b>{{ ctx.active().name }}</b>:
+        Selecciona los roles operativos para <b>{{ editingMember()?.email }}</b> en <b>{{ ctx.active()?.name }}</b>:
       </p>
       <div class="checks">
         @for (r of roleKeys; track r) {
@@ -364,8 +367,11 @@ export class AccessComponent {
   private readonly http = inject(HttpClient);
   protected readonly ctx = inject(EventContextService);
 
-  protected readonly members = signal<Member[]>(MEMBERS);
-  protected readonly invitations = signal<any[]>(INVITATIONS);
+  protected readonly members = signal<Member[]>([]);
+  protected readonly invitations = signal<any[]>([]);
+  private readonly membersError = signal<string | null>(null);
+  private readonly invitationsError = signal<string | null>(null);
+  protected readonly loadError = computed(() => this.membersError() ?? this.invitationsError());
   protected readonly roles = ROLE_LABELS;
   protected readonly roleKeys = Object.keys(ROLE_LABELS) as EventRole[];
   protected readonly orgAccess = ORG_ACCESS;
@@ -432,6 +438,14 @@ export class AccessComponent {
     });
   }
 
+  reload(): void {
+    const activeEvent = this.ctx.active();
+    if (activeEvent) {
+      this.loadMembersFromApi(activeEvent.id);
+    }
+    this.loadInvitationsFromApi();
+  }
+
   resetMemberFilters(): void {
     this.memberSearch.set('');
     this.memberOrgFilter.set('');
@@ -440,30 +454,30 @@ export class AccessComponent {
   }
 
   private async loadMembersFromApi(eventId: string): Promise<void> {
+    this.membersError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: Member[] }>(
           `/organizations/${this.ctx.orgId}/events/${eventId}/members`
         )
       );
-      if (res?.data && res.data.length > 0) {
-        this.members.set(res.data);
-      }
+      this.members.set(res?.data ?? []);
     } catch (err) {
-      console.warn('[AccessComponent] Usando miembros iniciales:', err);
+      this.members.set([]);
+      this.membersError.set(describeLoadError(err, 'No se pudieron cargar las personas con acceso.'));
     }
   }
 
   private async loadInvitationsFromApi(): Promise<void> {
+    this.invitationsError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: any[] }>(`/organizations/${this.ctx.orgId}/invitations`)
       );
-      if (res?.data && res.data.length > 0) {
-        this.invitations.set(res.data);
-      }
+      this.invitations.set(res?.data ?? []);
     } catch (err) {
-      console.warn('[AccessComponent] Usando invitaciones iniciales:', err);
+      this.invitations.set([]);
+      this.invitationsError.set(describeLoadError(err, 'No se pudieron cargar las invitaciones.'));
     }
   }
 
@@ -516,7 +530,7 @@ export class AccessComponent {
     this.errorMessage.set(null);
     this.successMessage.set(null);
 
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     try {
       await firstValueFrom(
         this.http.patch(
@@ -549,7 +563,7 @@ export class AccessComponent {
     this.errorMessage.set(null);
     this.successMessage.set(null);
 
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     try {
       await firstValueFrom(
         this.http.delete(
@@ -602,7 +616,7 @@ export class AccessComponent {
           {
             email: this.inviteEmail.trim(),
             target_access_type: 'operational',
-            event_id: this.ctx.active().id,
+            event_id: this.ctx.requireActive().id,
             roles: assignedRoles,
             expires_at: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
           },

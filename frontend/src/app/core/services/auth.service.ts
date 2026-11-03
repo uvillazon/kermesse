@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { EventRole } from '../mock/mock-data';
+import { EventRole } from '../models/domain';
 
 export interface AuthUser {
   id: string; // UUID v4

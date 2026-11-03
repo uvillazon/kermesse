@@ -8,6 +8,8 @@ import { TableModule } from 'primeng/table';
 import { firstValueFrom } from 'rxjs';
 import { EventContextService } from '../../core/services/event-context.service';
 import { AuthService } from '../../core/services/auth.service';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
 type Tab = 'pos' | 'verify' | 'history';
 
@@ -70,9 +72,10 @@ interface ApiSale {
 @Component({
   selector: 'app-sales',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule],
+  imports: [CommonModule, FormsModule, ButtonModule, InputTextModule, TableModule, LoadErrorBannerComponent],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
           <span class="eyebrow">Operación en vivo &bull; MariaDB</span>
@@ -562,6 +565,9 @@ export class SalesComponent implements OnInit {
   protected readonly tab = signal<Tab>('pos');
   protected readonly products = signal<ApiProduct[]>([]);
   protected readonly sales = signal<ApiSale[]>([]);
+  private readonly catalogError = signal<string | null>(null);
+  private readonly salesError = signal<string | null>(null);
+  protected readonly loadError = computed(() => this.catalogError() ?? this.salesError());
   protected readonly cart = signal<Record<string, number>>({});
   protected readonly paymentMethod = signal<'cash' | 'qr_transfer'>('cash');
   protected readonly submitting = signal(false);
@@ -684,33 +690,38 @@ export class SalesComponent implements OnInit {
     this.historyOperatorFilter.set('');
   }
 
+  reload(): void {
+    this.loadCatalog();
+    this.loadSales();
+  }
+
   async loadCatalog(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.catalogError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiProduct[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products?page_size=100`)
       );
-      if (res?.data) {
-        this.products.set(res.data);
-      }
+      this.products.set(res?.data ?? []);
     } catch (err: unknown) {
-      console.warn('[SalesComponent] No se pudo cargar catálogo del backend:', err);
+      this.products.set([]);
+      this.catalogError.set(describeLoadError(err, 'No se pudo cargar el catálogo para vender.'));
     }
   }
 
   async loadSales(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.salesError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{ data: ApiSale[] }>(`/organizations/${orgId}/events/${eventId}/sales?page_size=100`)
       );
-      if (res?.data) {
-        this.sales.set(res.data);
-      }
+      this.sales.set(res?.data ?? []);
     } catch (err: unknown) {
-      console.warn('[SalesComponent] No se pudieron cargar ventas del backend:', err);
+      this.sales.set([]);
+      this.salesError.set(describeLoadError(err, 'No se pudo cargar el historial de ventas.'));
     }
   }
 
@@ -754,7 +765,7 @@ export class SalesComponent implements OnInit {
     this.errorMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     const idempotencyKey = `pos-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
     try {
@@ -799,7 +810,7 @@ export class SalesComponent implements OnInit {
     this.reviewMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     const idempotencyKey = `pay-rev-${sale.id}-${decision}-${Date.now()}`;
 
     try {

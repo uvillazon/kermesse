@@ -6,7 +6,8 @@ import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { EVENTS, ORGANIZATION } from '../../core/mock/mock-data';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
 type Step = 'menu' | 'pay' | 'done';
 
@@ -26,17 +27,20 @@ interface PublicProduct {
 @Component({
   selector: 'app-public-store',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe, ButtonModule, InputTextModule],
+  imports: [CommonModule, FormsModule, DecimalPipe, ButtonModule, InputTextModule, LoadErrorBannerComponent],
   template: `
     <div class="store">
       <header class="hero">
         <div class="hero-in">
           <span class="org">{{ orgName() }}</span>
-          <h1>{{ eventName() }}</h1>
+          <h1>{{ eventName() || (loadError() ? 'Tienda no disponible' : 'Cargando tienda…') }}</h1>
           <p>Compra tus platos, bebidas y fichas en línea. Solo necesitas tu correo: recibirás tu ticket QR oficial para canjear en cada puesto.</p>
-          <span class="date"><i class="pi pi-calendar"></i> {{ eventDate() }}</span>
+          @if (eventDate()) {
+            <span class="date"><i class="pi pi-calendar"></i> {{ eventDate() }}</span>
+          }
         </div>
       </header>
+      <app-load-error-banner [message]="loadError()" (retry)="loadPublicCatalog(slug())" />
 
       <main class="body">
         @if (errorMessage()) {
@@ -224,10 +228,11 @@ export class PublicStoreComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
 
-  protected readonly orgName = signal(ORGANIZATION.name);
-  protected readonly eventName = signal(EVENTS[0].name);
-  protected readonly eventDate = signal(EVENTS[0].date);
-  protected readonly slug = signal('halloween-2026');
+  protected readonly orgName = signal('');
+  protected readonly eventName = signal('');
+  protected readonly eventDate = signal('');
+  protected readonly slug = signal('');
+  protected readonly loadError = signal<string | null>(null);
 
   protected readonly products = signal<PublicProduct[]>([]);
   protected readonly search = signal('');
@@ -273,12 +278,13 @@ export class PublicStoreComponent implements OnInit {
   protected readonly total = computed(() => this.lines().reduce((t, l) => t + l.subtotal, 0));
 
   ngOnInit(): void {
-    const paramSlug = this.route.snapshot.paramMap.get('slug') || 'halloween-2026';
+    const paramSlug = this.route.snapshot.paramMap.get('slug') ?? '';
     this.slug.set(paramSlug);
     this.loadPublicCatalog(paramSlug);
   }
 
   async loadPublicCatalog(slug: string): Promise<void> {
+    this.loadError.set(null);
     try {
       const res = await firstValueFrom(
         this.http.get<{
@@ -288,14 +294,16 @@ export class PublicStoreComponent implements OnInit {
           };
         }>(`/public/events/${slug}/catalog`)
       );
-      if (res?.data) {
-        this.orgName.set(res.data.event.organization_name);
-        this.eventName.set(res.data.event.name);
-        this.eventDate.set(res.data.event.date);
-        this.products.set(res.data.products);
-      }
+      this.orgName.set(res?.data?.event?.organization_name ?? '');
+      this.eventName.set(res?.data?.event?.name ?? '');
+      this.eventDate.set(res?.data?.event?.date ?? '');
+      this.products.set(res?.data?.products ?? []);
     } catch (err) {
-      console.warn('[PublicStoreComponent] Error cargando tienda pública:', err);
+      this.orgName.set('');
+      this.eventName.set('');
+      this.eventDate.set('');
+      this.products.set([]);
+      this.loadError.set(describeLoadError(err, 'No se pudo cargar la tienda de este evento.'));
     }
   }
 

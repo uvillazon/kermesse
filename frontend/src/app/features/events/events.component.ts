@@ -9,7 +9,7 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { EventContextService } from '../../core/services/event-context.service';
-import { EVENT_STATUS } from '../../core/mock/mock-data';
+import { EVENT_STATUS } from '../../core/models/domain';
 
 @Component({
   selector: 'app-events',
@@ -43,11 +43,11 @@ import { EVENT_STATUS } from '../../core/mock/mock-data';
       <!-- Tarjetas destacadas de eventos -->
       <div class="cards">
         @for (e of filteredEvents(); track e.id) {
-          <article class="panel ev" [class.current]="e.id === ctx.active().id">
+          <article class="panel ev" [class.current]="e.id === ctx.active()?.id">
             <div class="panel-body">
               <div class="top">
                 <span [class]="'pill ' + (status[e.status]?.css || 'gray')">{{ status[e.status]?.label || e.status }}</span>
-                @if (e.id === ctx.active().id) {
+                @if (e.id === ctx.active()?.id) {
                   <span class="pill cyan">Activo en sesión</span>
                 }
               </div>
@@ -127,7 +127,7 @@ import { EVENT_STATUS } from '../../core/mock/mock-data';
             <tr>
               <td>
                 <b>{{ e.name }}</b>
-                @if (e.id === ctx.active().id) {
+                @if (e.id === ctx.active()?.id) {
                   <span class="pill cyan" style="margin-left: .4rem">Actual</span>
                 }
               </td>
@@ -140,7 +140,7 @@ import { EVENT_STATUS } from '../../core/mock/mock-data';
                 </span>
               </td>
               <td style="text-align: right">
-                <p-button size="small" label="Seleccionar" icon="pi pi-check" [outlined]="e.id !== ctx.active().id" (onClick)="open(e.id)" />
+                <p-button size="small" label="Seleccionar" icon="pi pi-check" [outlined]="e.id !== ctx.active()?.id" (onClick)="open(e.id)" />
               </td>
             </tr>
           </ng-template>

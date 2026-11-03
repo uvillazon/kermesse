@@ -10,7 +10,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { EventContextService } from '../../core/services/event-context.service';
-import { PRODUCTS, STANDS, Stand } from '../../core/mock/mock-data';
+import { Stand } from '../../core/models/domain';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
 interface ApiCatalogProduct {
   id: string;
@@ -41,9 +43,11 @@ interface ApiCatalogProduct {
     InputTextModule,
     InputNumberModule,
     ToggleSwitchModule,
+    LoadErrorBannerComponent,
   ],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="reload()" />
       <div class="page-header">
         <div>
           <span class="eyebrow"><i class="pi pi-shop"></i> Configuración del evento &bull; Backend MariaDB</span>
@@ -367,8 +371,9 @@ export class CatalogComponent {
   private readonly http = inject(HttpClient);
   protected readonly ctx = inject(EventContextService);
 
-  protected readonly stands = signal<Stand[]>(STANDS);
-  protected readonly products = signal<any[]>(structuredClone(PRODUCTS));
+  protected readonly stands = signal<Stand[]>([]);
+  protected readonly products = signal<any[]>([]);
+  protected readonly loadError = signal<string | null>(null);
   protected readonly dialog = signal(false);
   protected readonly standDialog = signal(false);
   protected readonly saving = signal(false);
@@ -379,7 +384,7 @@ export class CatalogComponent {
   // Campos del formulario modal
   protected formName = '';
   protected formCode = '';
-  protected formStandName = STANDS[0]?.name ?? 'Parrilla San Andrés';
+  protected formStandName = '';
   protected formPrice = 25;
   protected formStock = 80;
 
@@ -452,7 +457,7 @@ export class CatalogComponent {
     this.editingProductId.set(null);
     this.formName = '';
     this.formCode = `PRD-${Math.floor(10 + Math.random() * 89)}`;
-    this.formStandName = this.stands()[0]?.name ?? 'Parrilla San Andrés';
+    this.formStandName = this.stands()[0]?.name ?? '';
     this.formPrice = 20;
     this.formStock = 60;
     this.errorMessage.set(null);
@@ -475,13 +480,17 @@ export class CatalogComponent {
       this.errorMessage.set('Ingresa el nombre del producto.');
       return;
     }
+    if (!this.formStandName) {
+      this.errorMessage.set('Crea o selecciona un puesto antes de guardar el producto.');
+      return;
+    }
 
     this.saving.set(true);
     this.errorMessage.set(null);
     this.feedbackMessage.set(null);
 
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
     const unitPriceMinor = Math.round((this.formPrice || 1) * 100);
     const stock = Math.max(1, Math.round(this.formStock || 1));
 
@@ -540,7 +549,7 @@ export class CatalogComponent {
   async toggleActive(p: any, active: boolean): Promise<void> {
     p.active = active;
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
 
     try {
       await firstValueFrom(
@@ -568,6 +577,7 @@ export class CatalogComponent {
   }
 
   private async loadCatalogFromApi(eventId: string): Promise<void> {
+    this.loadError.set(null);
     try {
       const [res, standsRes] = await Promise.all([
         firstValueFrom(
@@ -582,47 +592,45 @@ export class CatalogComponent {
         ),
       ]);
 
-      if (standsRes?.data && standsRes.data.length > 0) {
-        const icons = ['pi-sparkles', 'pi-star', 'pi-heart', 'pi-ticket', 'pi-shop'];
-        this.stands.set(
-          standsRes.data.map((s, idx) => ({
-            id: s.id,
-            name: s.name,
-            manager: s.manager,
-            icon: icons[idx % icons.length],
-          }))
-        );
-      }
+      const icons = ['pi-sparkles', 'pi-star', 'pi-heart', 'pi-ticket', 'pi-shop'];
+      this.stands.set(
+        (standsRes?.data ?? []).map((s, idx) => ({
+          id: s.id,
+          name: s.name,
+          manager: s.manager,
+          icon: icons[idx % icons.length],
+        }))
+      );
 
-      if (res?.data && res.data.length > 0) {
-        const emojis: Record<string, string> = {
-          'COM-01': '🍖',
-          'COM-02': '🥩',
-          'COM-03': '🍔',
-          'BEB-01': '🥤',
-          'BEB-02': '🍹',
-          'POS-01': '🧁',
-          'POS-02': '🍰',
-          'JUE-01': '🎃',
-        };
+      const emojis: Record<string, string> = {
+        'COM-01': '🍖',
+        'COM-02': '🥩',
+        'COM-03': '🍔',
+        'BEB-01': '🥤',
+        'BEB-02': '🍹',
+        'POS-01': '🧁',
+        'POS-02': '🍰',
+        'JUE-01': '🎃',
+      };
 
-        const mapped = res.data.map((p) => ({
-          id: p.id,
-          code: p.code,
-          standId: p.stand_id,
-          standName: p.stand_name,
-          name: p.name,
-          price: p.unit_price,
-          stock: p.stock,
-          sold: p.sold,
-          active: p.active,
-          version: p.version,
-          emoji: emojis[p.code] || '🍽️',
-        }));
-        this.products.set(mapped);
-      }
+      const mapped = (res?.data ?? []).map((p) => ({
+        id: p.id,
+        code: p.code,
+        standId: p.stand_id,
+        standName: p.stand_name,
+        name: p.name,
+        price: p.unit_price,
+        stock: p.stock,
+        sold: p.sold,
+        active: p.active,
+        version: p.version,
+        emoji: emojis[p.code] || '🍽️',
+      }));
+      this.products.set(mapped);
     } catch (err) {
-      console.warn('[CatalogComponent] Usando catálogo inicial/fallback:', err);
+      this.stands.set([]);
+      this.products.set([]);
+      this.loadError.set(describeLoadError(err, 'No se pudo cargar el catálogo del evento.'));
     }
   }
 
@@ -641,7 +649,7 @@ export class CatalogComponent {
 
     this.saving.set(true);
     this.errorMessage.set(null);
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
 
     try {
       await firstValueFrom(

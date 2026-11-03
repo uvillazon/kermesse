@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { EventContextService } from '../../services/event-context.service';
 import { AuthService } from '../../services/auth.service';
-import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
+import { EVENT_STATUS } from '../../models/domain';
 
 @Component({
   selector: 'app-topbar',
@@ -19,25 +19,22 @@ import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
           <span class="logo"><i class="pi pi-globe"></i></span>
           <span class="brand-name">Kermes<b>fera</b></span>
         </a>
-        <span class="divider"></span>
-        <span class="org">
-          <span class="org-badge">{{ org.initials }}</span>
-          <span class="org-name">{{ org.name }}</span>
-        </span>
       </div>
 
       <div class="center">
-        <label class="event-select">
-          <i class="pi pi-calendar"></i>
-          <select [ngModel]="ctx.active().id" (ngModelChange)="ctx.select($event)" aria-label="Evento activo">
-            @for (e of ctx.all(); track e.id) {
-              <option [value]="e.id">{{ e.name }}</option>
-            }
-          </select>
-        </label>
-        <span class="pill" [class]="'pill ' + status[ctx.active().status].css">
-          {{ status[ctx.active().status].label }}
-        </span>
+        @if (ctx.active(); as ev) {
+          <label class="event-select">
+            <i class="pi pi-calendar"></i>
+            <select [ngModel]="ev.id" (ngModelChange)="ctx.select($event)" aria-label="Evento activo">
+              @for (e of ctx.all(); track e.id) {
+                <option [value]="e.id">{{ e.name }}</option>
+              }
+            </select>
+          </label>
+          <span [class]="'pill ' + (status[ev.status]?.css ?? 'gray')">
+            {{ status[ev.status]?.label ?? ev.status }}
+          </span>
+        }
         <span
           class="backend-pill"
           [class.online]="auth.isBackendConnected()"
@@ -49,14 +46,16 @@ import { EVENT_STATUS, ORGANIZATION } from '../../mock/mock-data';
       </div>
 
       <div class="right">
-        <a
-          class="icon-btn"
-          routerLink="/tienda/halloween-2026"
-          target="_blank"
-          title="Ver página pública de compra"
-        >
-          <i class="pi pi-external-link"></i>
-        </a>
+        @if (ctx.active(); as ev) {
+          <a
+            class="icon-btn"
+            [routerLink]="['/tienda', ev.slug]"
+            target="_blank"
+            title="Ver página pública de compra"
+          >
+            <i class="pi pi-external-link"></i>
+          </a>
+        }
 
         @if (auth.currentUser(); as user) {
           <div class="user-block">
@@ -277,8 +276,7 @@ export class TopbarComponent {
   readonly toggleSidebar = output<void>();
   protected readonly ctx = inject(EventContextService);
   protected readonly auth = inject(AuthService);
-  protected readonly org = ORGANIZATION;
-  protected readonly status = EVENT_STATUS;
+  protected readonly status: Record<string, { label: string; css: string } | undefined> = EVENT_STATUS;
 
   getOrgAccessLabel(type: 'owner' | 'administrator' | 'collaborator'): string {
     switch (type) {

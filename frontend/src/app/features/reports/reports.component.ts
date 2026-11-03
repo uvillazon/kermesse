@@ -9,7 +9,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TableModule } from 'primeng/table';
 import { EventContextService } from '../../core/services/event-context.service';
-import { EXPENSES } from '../../core/mock/mock-data';
+import { describeLoadError } from '../../core/services/load-error';
+import { LoadErrorBannerComponent } from '../../core/ui/load-error-banner.component';
 
 interface ApiProductReport {
   id: string;
@@ -57,9 +58,11 @@ interface ApiAuditLog {
     InputTextModule,
     InputNumberModule,
     TableModule,
+    LoadErrorBannerComponent,
   ],
   template: `
     <div class="page">
+      <app-load-error-banner [message]="loadError()" (retry)="loadData()" />
       <div class="page-header">
         <div>
           <span class="eyebrow">Administración &bull; Finanzas y Auditoría en MariaDB</span>
@@ -377,15 +380,14 @@ interface ApiAuditLog {
             </p>
             <div class="notice warn">
               <i class="pi pi-exclamation-triangle"></i>
-              <span>Pendiente de negocio: definir qué rol puede cerrar. En el prototipo se permite para demostrar el modo consulta.</span>
+              <span>Todavía no disponible: falta definir qué rol autoriza el cierre y la API aún no lo implementa. Hasta entonces el evento no se puede cerrar desde aquí.</span>
             </div>
           </div>
           <p-button
             [label]="ctx.readOnly() ? 'Evento cerrado' : 'Cerrar evento'"
             icon="pi pi-lock"
             severity="danger"
-            [disabled]="ctx.readOnly()"
-            (onClick)="confirm.set(true)"
+            [disabled]="true"
           />
         </div>
       </section>
@@ -424,15 +426,6 @@ interface ApiAuditLog {
         <p-button label="Guardar gasto" icon="pi pi-check" [loading]="savingExpense()" (onClick)="saveExpense()" />
       </ng-template>
     </p-dialog>
-
-    <!-- Modal: Confirmar cierre -->
-    <p-dialog header="¿Cerrar el evento?" [visible]="confirm()" (visibleChange)="confirm.set($event)" [modal]="true" [style]="{ width: '440px' }" [draggable]="false">
-      <p>Vas a cerrar <b>{{ ctx.active().name }}</b>. Esta acción es <b>irreversible</b>.</p>
-      <ng-template #footer>
-        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="confirm.set(false)" />
-        <p-button label="Sí, cerrar evento" severity="danger" (onClick)="close()" />
-      </ng-template>
-    </p-dialog>
   `,
   styles: [`
     .neg { color: var(--kf-red) !important; }
@@ -447,7 +440,8 @@ export class ReportsComponent implements OnInit {
   protected readonly ctx = inject(EventContextService);
 
   protected readonly products = signal<ApiProductReport[]>([]);
-  protected readonly expenseRows = signal<ApiExpense[]>(EXPENSES);
+  protected readonly expenseRows = signal<ApiExpense[]>([]);
+  protected readonly loadError = signal<string | null>(null);
   protected readonly auditLogs = signal<ApiAuditLog[]>([]);
 
   // Filtros de ingresos por producto
@@ -535,7 +529,6 @@ export class ReportsComponent implements OnInit {
 
   protected readonly exported = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly confirm = signal(false);
 
   ngOnInit(): void {
     this.loadData();
@@ -543,18 +536,22 @@ export class ReportsComponent implements OnInit {
 
   async loadData(): Promise<void> {
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
+    this.loadError.set(null);
     try {
       const [prodRes, expRes, auditRes] = await Promise.all([
         firstValueFrom(this.http.get<{ data: ApiProductReport[] }>(`/organizations/${orgId}/events/${eventId}/catalog/products`)),
         firstValueFrom(this.http.get<{ data: ApiExpense[] }>(`/organizations/${orgId}/events/${eventId}/expenses`)),
         firstValueFrom(this.http.get<{ data: ApiAuditLog[] }>(`/organizations/${orgId}/events/${eventId}/audit-logs`)),
       ]);
-      if (prodRes?.data) this.products.set(prodRes.data);
-      if (expRes?.data && expRes.data.length > 0) this.expenseRows.set(expRes.data);
-      if (auditRes?.data) this.auditLogs.set(auditRes.data);
+      this.products.set(prodRes?.data ?? []);
+      this.expenseRows.set(expRes?.data ?? []);
+      this.auditLogs.set(auditRes?.data ?? []);
     } catch (err) {
-      console.warn('[ReportsComponent] Error cargando datos financieros:', err);
+      this.products.set([]);
+      this.expenseRows.set([]);
+      this.auditLogs.set([]);
+      this.loadError.set(describeLoadError(err, 'No se pudieron cargar los datos financieros del evento.'));
     }
   }
 
@@ -584,7 +581,7 @@ export class ReportsComponent implements OnInit {
     this.savingExpense.set(true);
     this.errorMessage.set(null);
     const orgId = this.ctx.orgId;
-    const eventId = this.ctx.active().id;
+    const eventId = this.ctx.requireActive().id;
 
     try {
       await firstValueFrom(
@@ -631,7 +628,7 @@ export class ReportsComponent implements OnInit {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `balance-${this.ctx.active().id.slice(0, 8)}.csv`;
+    a.download = `balance-${this.ctx.requireActive().id.slice(0, 8)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     this.exported.set('Archivo Excel/CSV descargado con los datos reales de MariaDB.');
@@ -640,10 +637,5 @@ export class ReportsComponent implements OnInit {
   exportPdf(): void {
     window.print();
     this.exported.set('Vista de impresión / PDF generada.');
-  }
-
-  close(): void {
-    this.ctx.closeActive();
-    this.confirm.set(false);
   }
 }
