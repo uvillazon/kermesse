@@ -18,12 +18,31 @@
 - Descripciones de roles según `RolePermissionMap`, no según la matriz v0.3 (no aprobada).
 
 ## Pendiente
-- Seguridad: la autorización de listados ya entró con el PR #7; las contraseñas reales están en el PR #6 (abierto,
-  con conflictos contra `master`). Ver memoria `project-seguridad-pendiente`.
+- (Resuelto después en el mismo día, ver la sección de abajo: contraseñas reales PR #6, autorización de listados
+  PR #7, abrir eventos y "Canjear" PR #10.)
 - Control de la UI por rol. Siguiente paso: mapear menús y botones a los permisos de `RolePermissionMap`.
-- "Canjear" visible en tickets anulados; login con cuentas demo; endpoint para abrir eventos en borrador.
 
 ## Descartado
 - Subir el límite de 4 kB de CSS por componente: se movió la barra de cobro a `styles.scss` (`.mobile-action-bar`).
 - Mostrar la etiqueta "API 8000 OK/Offline": dio un falso "Offline" y cada pantalla ya avisa sus errores.
 - Reescribir tablas como componentes de tarjeta: bastó CSS con `data-label` en cada celda.
+
+## Continuación: PR #4 → #10 y paso a trabajo local
+- Se fusionaron todos los PR del día: #4 (frontend), #5 (tests), #6 (contraseñas), #7 (autorización de listados),
+  #8 y #9 (cierres de sesión). El #6 chocó en 6 archivos con lo anterior; se resolvió a mano (login y su test
+  partido en dos: contraseñas y organizaciones). Backend 133 tests y frontend 65 antes del #10.
+- PR #10: `POST .../events/{id}/opening` (borrador → abierto, idempotente, auditado), botón "Abrir evento" con
+  confirmación, aviso de borrador en el layout y "Canjear" solo en tickets canjeables. Probado de punta a punta en
+  la base de demostración (en borrador la venta da 422; tras abrir, se confirma). Backend 139, frontend 74.
+- Decisión sin respuesta del usuario: abre propietario o administrador (`org.manage_members`). Provisional hasta
+  decidir quién gestiona la habilitación comercial (`RN-COM-001`). Ver memoria `project-abrir-evento`.
+- Fallo propio corregido: refrescar eventos volvía a "cargando", el layout desmontaba la pantalla y se perdían los
+  mensajes de éxito. Ahora solo la primera carga o el cambio de organización muestran "cargando".
+- Borrar las ramas viejas desde la nube dio 403 (no reintentar). Quedan 5 en GitHub sin nada propio.
+- El usuario sigue en local: se acabó el crédito de la nube.
+
+## Pendiente (vigente al 2026-11-12)
+- **Siguiente paso:** pantalla de Angular para aceptar invitaciones con contraseña (`POST /invitations/accept`).
+- Borrar a mano las ramas `claude/*` y `docs/protocolo-memoria*` en GitHub → Branches; ya no tienen nada propio.
+- Control de la UI por rol, habilitación comercial y quién autoriza `event.close` (decisiones de la organización).
+- Mensaje en inglés "Sales require an open event." y enlace fijo a `/tienda/halloween-2026` en el login.

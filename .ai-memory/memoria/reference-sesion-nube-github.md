@@ -32,5 +32,11 @@ Aprendido el 2026-11-03 trabajando desde Claude Code en la nube (`/home/user/ker
   Si de golpe todas las pruebas de integración dan `Connection refused`, MariaDB se detuvo (pasó el
   2026-11-03): repetir el paso 2 antes de buscar el error en el código.
 
+- **Borrar ramas remotas da 403** desde la nube (`git push --delete` y la API): la sesión puede subir a su rama,
+  pero no borrar ramas. Se borran a mano en GitHub → Branches (ícono de papelera). No reintentar.
+- **Otras sesiones suben commits de cierre a su rama después de que su PR se fusionó.** Antes de dar "todo
+  fusionado" por cierto, comparar cada rama remota con `master` (`git log origin/master..origin/<rama>`); el
+  2026-11-03 aparecieron tres cierres sueltos (memoria y bitácoras de los PR #5, #6 y #7) que hubo que juntar en el PR #9.
+
 **Why:** perdimos varios intentos por tratar el 403 como error de red o de cuenta. **How to apply:** ante un 403,
 no reintentar; revisar la instalación de la app y probar `create_branch`. Ver [[project-protocolo-memoria]].

@@ -38,8 +38,10 @@ Todo lo anterior se fusionó en `master` con el PR #4 el 2026-11-03.
 - El login enlaza a `/tienda/halloween-2026` y precarga un correo; las cuentas demo ya solo existen en desarrollo (PR #6).
 - `ApiService` sin uso; `environment.prod.ts` apunta a `127.0.0.1:8000`.
 - Seguridad del backend resuelta por los PR #6 y #7: ver [[project-contrasenas-login]] y [[project-autorizacion-listados-get]].
-- Endpoints sin pantalla: `ownership-transfers`, `invitations/accept`. En OpenAPI pero no en el backend:
-  `exports`, `reports/balance`, `closure`, `payments/.../confirmation`.
+- Endpoints sin pantalla: `invitations/accept` (**el siguiente trabajo**, ahora con contraseña) y `ownership-transfers`.
+  En OpenAPI pero no en el backend: `exports`, `reports/balance`, `closure`, `payments/.../confirmation`.
+- El backend responde en inglés "Sales require an open event." al vender en un evento en borrador.
+- Habilitación comercial (`RN-COM-001`) sin implementar: un evento abierto vende sin ella ([[project-abrir-evento]]).
 
 **PrimeNG 22 ignora `pTemplate="header|body|emptymessage"`:** las tablas de Inicio, Reportes, Ventas, Accesos y
 Eventos salían sin filas ni cabecera, también en el navegador (se vio al capturar pantallas el 2026-11-03).
